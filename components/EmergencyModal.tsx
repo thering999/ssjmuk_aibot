@@ -1,0 +1,77 @@
+
+import React from 'react';
+import type { EmergencyResult, Geolocation } from '../types';
+import { useTranslation } from '../hooks/useTranslation';
+
+interface EmergencyModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  isLoading: boolean;
+  error: string | null;
+  result: EmergencyResult | null;
+  userLocation: Geolocation | null;
+}
+
+const EmergencyModal: React.FC<EmergencyModalProps> = ({ isOpen, onClose, isLoading, error, result, userLocation }) => {
+  const { t } = useTranslation();
+
+  if (!isOpen) return null;
+
+  const directionsUrl = result && userLocation
+    ? `https://www.google.com/maps/dir/?api=1&origin=${userLocation.latitude},${userLocation.longitude}&destination=${encodeURIComponent(result.address)}`
+    : '#';
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full relative">
+        <button onClick={onClose} className="absolute top-3 right-3 p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+        <div className="flex items-center mb-4">
+          <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center mr-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600 dark:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('emergencyModalTitle')}</h2>
+        </div>
+
+        <div className="min-h-[120px]">
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center text-center">
+              <svg className="animate-spin h-8 w-8 text-teal-600 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              <p className="text-gray-600 dark:text-gray-400">{t('emergencyModalLoading')}</p>
+            </div>
+          )}
+          {error && <p className="text-red-600 dark:text-red-400 text-center">{error}</p>}
+          {result && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">{t('foundLocationTitle')}</h3>
+              <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{result.name}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{result.address}</p>
+              <a 
+                href={directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                {t('getDirections')}
+              </a>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">{t('emergencyNumbersTitle')}</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600 dark:text-gray-300">{t('emergencyNumberNarenthorn')}</span>
+              <a href="tel:1669" className="text-lg font-bold text-red-600 dark:text-red-400 hover:underline">1669</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EmergencyModal;
