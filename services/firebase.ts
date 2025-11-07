@@ -1,5 +1,3 @@
-
-
 // @google/genai-fix: Refactored to use Firebase v9 compat API to resolve type errors with v8 syntax.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -8,16 +6,17 @@ import 'firebase/compat/storage';
 
 import type { Conversation, KnowledgeDocument } from '../types';
 
-// IMPORTANT: Replace with your project's credentials from the Firebase Console
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAFC2MkS-ie0AI6OEsbCSD20FhyQZplv9g",
   authDomain: "ssj-mukdahan-ai-bot.firebaseapp.com",
   projectId: "ssj-mukdahan-ai-bot",
-  storageBucket: "ssj-mukdahan-ai-bot.appspot.com",
+  storageBucket: "ssj-mukdahan-ai-bot.firebasestorage.app",
   messagingSenderId: "557496406519",
   appId: "1:557496406519:web:5e18658a40bf1c63415ef2",
   measurementId: "G-8KEMJLGT70"
 };
+
 
 // Function to check if Firebase config is set
 export const isFirebaseConfigured = (): boolean => {
@@ -38,7 +37,6 @@ export type User = firebase.User;
 
 // --- Services ---
 const auth = app ? firebase.auth() : undefined;
-// Fix: Export the 'db' constant so it can be imported by other modules.
 export const db = app ? firebase.firestore() : undefined;
 const storage = app ? firebase.storage() : undefined;
 const provider = app ? new firebase.auth.GoogleAuthProvider() : undefined;

@@ -1,7 +1,28 @@
-
-import { Type } from "@google/genai";
+import { Type, GenerateContentResponse } from "@google/genai";
 import { ai } from "./geminiService";
 import type { AttachedFile, HealthReportAnalysis } from '../types';
+
+/**
+ * Safely extracts text from a Gemini API response object.
+ * This avoids console warnings about non-text parts (e.g., thoughtSignature)
+ * by manually concatenating only the text parts from the response candidates.
+ * @param response The GenerateContentResponse or a stream chunk.
+ * @returns The extracted text as a single string.
+ */
+function extractText(response: any): string {
+    if (!response?.candidates || response.candidates.length === 0) {
+        return '';
+    }
+    const candidate = response.candidates[0];
+    if (!candidate?.content || !candidate.content.parts) {
+        return '';
+    }
+    return candidate.content.parts
+        .map((part: any) => part.text)
+        .filter((text: string | undefined) => text !== undefined)
+        .join('');
+}
+
 
 const responseSchema = {
     type: Type.OBJECT,
@@ -63,12 +84,31 @@ IMPORTANT: You are not a medical professional. Do NOT provide any diagnosis, med
                 systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema: responseSchema,
-                temperature: 0.2 // Lower temperature for more factual, less creative output
+                temperature: 0.2, // Lower temperature for more factual, less creative output
+                thinkingConfig: { thinkingBudget: 24576 }
             }
         });
 
-        const jsonText = ((response.candidates?.[0]?.content?.parts || []).map(p => p.text).filter(Boolean).join('')).trim();
-        const result = JSON.parse(jsonText) as HealthReportAnalysis;
+        let jsonText = extractText(response).trim();
+        
+        // The model might return markdown ```json ... ```. Strip it.
+        const jsonMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch && jsonMatch[1]) {
+            jsonText = jsonMatch[1];
+        }
+
+        if (!jsonText) {
+            throw new Error("AI returned an empty analysis.");
+        }
+
+        const parsedResult = JSON.parse(jsonText);
+        
+        // Defensive validation to ensure arrays exist, preventing runtime errors in the UI.
+        const result: HealthReportAnalysis = {
+            summary: parsedResult.summary || "No summary provided.",
+            keyFindings: Array.isArray(parsedResult.keyFindings) ? parsedResult.keyFindings : [],
+            detailedResults: Array.isArray(parsedResult.detailedResults) ? parsedResult.detailedResults : [],
+        };
         
         // Prepend the disclaimer to the summary if the model forgets
         const disclaimer = "Disclaimer: This is an AI-generated summary for informational purposes only and is not medical advice. Please consult a healthcare professional.";
@@ -80,6 +120,9 @@ IMPORTANT: You are not a medical professional. Do NOT provide any diagnosis, med
 
     } catch (error) {
         console.error("Error analyzing health report:", error);
+        if (error instanceof SyntaxError) {
+             throw new Error("Failed to analyze the health report. The AI returned invalid JSON.");
+        }
         // Re-throw to be handled by the UI component
         throw new Error("Failed to analyze the health report. The AI model could not process the request.");
     }

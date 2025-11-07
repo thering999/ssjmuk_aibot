@@ -3,9 +3,9 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
 import { getHealthRecords, deleteHealthRecord } from '../services/healthDashboardService';
 import type { HealthRecord, AnalyzedMetric } from '../types';
+import type { TFunction } from 'i18next';
 
-const StatusIndicator: React.FC<{ status: AnalyzedMetric['status'] }> = ({ status }) => {
-    const { t } = useTranslation();
+const StatusIndicator: React.FC<{ status: AnalyzedMetric['status']; t: TFunction }> = ({ status, t }) => {
     const statusMap = {
         High: { text: t('statusHigh'), color: 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200' },
         Low: { text: t('statusLow'), color: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200' },
@@ -19,9 +19,8 @@ const StatusIndicator: React.FC<{ status: AnalyzedMetric['status'] }> = ({ statu
     );
 };
 
-const HealthRecordCard: React.FC<{ record: HealthRecord; onDelete: (id: string) => void }> = ({ record, onDelete }) => {
+const HealthRecordCard: React.FC<{ record: HealthRecord; onDelete: (id: string) => void; t: TFunction }> = ({ record, onDelete, t }) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    const { t } = useTranslation();
     const { analysis } = record;
 
     return (
@@ -52,7 +51,7 @@ const HealthRecordCard: React.FC<{ record: HealthRecord; onDelete: (id: string) 
                                         <div key={item.metric} className="p-2 border-l-4 border-red-400 bg-red-50 dark:bg-red-900/20 rounded-r-md">
                                             <div className="flex justify-between items-center">
                                                 <span className="font-semibold text-sm">{item.metric}</span>
-                                                <StatusIndicator status={item.status} />
+                                                <StatusIndicator status={item.status} t={t} />
                                             </div>
                                             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{item.value} {item.unit} (Range: {item.range})</p>
                                         </div>
@@ -71,7 +70,7 @@ const HealthRecordCard: React.FC<{ record: HealthRecord; onDelete: (id: string) 
                                         </div>
                                         <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
                                             <span>Range: {item.range}</span>
-                                            <StatusIndicator status={item.status} />
+                                            <StatusIndicator status={item.status} t={t} />
                                         </div>
                                         <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">{item.explanation}</p>
                                     </li>
@@ -150,7 +149,7 @@ const Dashboard: React.FC = () => {
       return (
           <div className="space-y-4">
               {records.map(record => (
-                  <HealthRecordCard key={record.id} record={record} onDelete={handleDelete} />
+                  <HealthRecordCard key={record.id} record={record} onDelete={handleDelete} t={t} />
               ))}
           </div>
       );

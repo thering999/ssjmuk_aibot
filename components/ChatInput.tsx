@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { AttachedFile } from '../types';
 import { useSpeech } from '../hooks/useSpeech';
 import { useTranslation } from '../hooks/useTranslation';
-import { processFiles } from '../utils/fileUtils';
+import { processFiles, SUPPORTED_GENERATE_CONTENT_MIME_TYPES } from '../utils/fileUtils';
 
 interface ChatInputProps {
   onSendMessage: (text: string) => void;
@@ -12,6 +12,7 @@ interface ChatInputProps {
   aspectRatio: string;
   setAspectRatio: (ratio: string) => void;
   onStopGeneration: () => void;
+  onShowToast: (message: string) => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -22,6 +23,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   aspectRatio,
   setAspectRatio,
   onStopGeneration,
+  onShowToast,
 }) => {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -64,7 +66,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
     if (!files || files.length === 0) return;
 
     try {
-        const newFiles = await processFiles(Array.from(files));
+        const newFiles = await processFiles(
+            Array.from(files),
+            SUPPORTED_GENERATE_CONTENT_MIME_TYPES,
+            (fileName, fileType) => {
+                onShowToast(t('toastUnsupportedFile', { fileName, fileType }));
+            }
+        );
         setAttachedFiles(prev => [...prev, ...newFiles]);
     } catch (error) {
         console.error("Error processing files:", error);
@@ -87,7 +95,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
       }
   };
 
-  const showAspectRatio = attachedFiles.length === 1 && attachedFiles[0].mimeType.startsWith('image/');
+  const showAspectRatio = attachedFiles.length === 1 && attachedFiles[0].mimeType.startsWith('image/') && attachedFiles[0].base64;
 
   return (
     <div className="w-full max-w-3xl mx-auto">
@@ -108,7 +116,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             <div className="flex-1 flex flex-wrap gap-2">
                 {attachedFiles.map((file, index) => (
                     <div key={index} className="bg-white dark:bg-gray-600 rounded-full flex items-center pl-2 pr-1 py-1 space-x-2 text-sm max-w-full">
-                        {file.mimeType.startsWith('image/') ? (
+                        {file.mimeType.startsWith('image/') && file.base64 ? (
                              <img src={`data:${file.mimeType};base64,${file.base64}`} alt="preview" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
                         ) : (
                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
@@ -139,7 +147,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             type="file" 
             ref={fileInputRef} 
             onChange={handleFileChange} 
-            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.txt,.csv,.html,.css,.js,.py,.java,.c,.cpp,.cs,.ts,.tsx,.json,.xml,.md" 
+            accept="image/*,video/*,.txt,.md,.json,.csv,.html,.xml,.js,.css,.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             className="hidden"
             multiple
         />

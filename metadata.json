@@ -1,8 +1,9 @@
 {
-  "name": "สสจ.มุกดาหาร AI Bot",
+  "name": "สสจ.มุกดาหาร-AI-ChatBot",
   "description": "A web-based AI chatbot designed to answer health-related questions and provide general information about Mukdahan province, powered by Google's Gemini API.",
   "requestFramePermissions": [
     "microphone",
-    "geolocation"
+    "geolocation",
+    "camera"
   ]
 }

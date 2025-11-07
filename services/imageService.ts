@@ -4,7 +4,6 @@ import { ai } from './geminiService';
 
 export const generateImage = async (prompt: string, aspectRatio: string): Promise<string> => {
   const response = await ai.models.generateImages({
-    // Fix: Updated to the recommended model for high-quality image generation.
     model: 'imagen-4.0-generate-001',
     prompt,
     config: {
@@ -31,8 +30,11 @@ export const generateImage = async (prompt: string, aspectRatio: string): Promis
 };
 
 export const editImage = async (prompt: string, file: AttachedFile): Promise<string> => {
+    if (!file.base64) {
+      throw new Error("Cannot edit a file without image data.");
+    }
+
     const response = await ai.models.generateContent({
-        // Fix: Updated to the recommended model for image editing.
         model: 'gemini-2.5-flash-image',
         contents: {
             parts: [

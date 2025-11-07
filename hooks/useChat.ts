@@ -142,7 +142,16 @@ export const useChat = (
         addMessage(convId, botMessage);
         
         try {
-            const singleFile = attachedFiles.length === 1 ? attachedFiles[0] : null;
+            const textFiles = attachedFiles.filter(f => f.textContent);
+            const mediaFiles = attachedFiles.filter(f => f.base64);
+            const singleMediaFile = mediaFiles.length === 1 ? mediaFiles[0] : null;
+
+            let promptWithContext = text;
+            if (textFiles.length > 0) {
+                const fileContext = textFiles.map(f => `--- Content of ${f.name} ---\n${f.textContent}`).join('\n\n');
+                // Place context before the user's prompt text.
+                promptWithContext = `${fileContext}\n\n---\n\n${text}`;
+            }
 
             const imageGenTriggers = t('imageGenerationTriggers', { returnObjects: true }) as string[];
             const imageEditTriggers = t('imageEditingTriggers', { returnObjects: true }) as string[];
@@ -154,13 +163,11 @@ export const useChat = (
             
             let isImageEditing = false;
             let editPrompt = '';
-            let imageEditTrigger = '';
 
-            if (singleFile?.mimeType.startsWith("image/") && text) {
+            if (singleMediaFile?.mimeType.startsWith("image/") && text) {
                 const foundTrigger = imageEditTriggers.find(t => lowerCaseText.startsWith(t.toLowerCase()));
                 if (foundTrigger) {
                     isImageEditing = true;
-                    imageEditTrigger = foundTrigger;
                     editPrompt = text.substring(foundTrigger.length).trim();
                 }
             }
@@ -171,11 +178,11 @@ export const useChat = (
                 updateMessage(convId, botMessageId, { isProcessing: false, imageUrl });
             } else if (isImageEditing) {
                 updateMessage(convId, botMessageId, { mediaType: 'image' });
-                const imageUrl = await editImage(editPrompt, singleFile!);
+                const imageUrl = await editImage(editPrompt, singleMediaFile!);
                 updateMessage(convId, botMessageId, { isProcessing: false, imageUrl });
             } else if (isVideoGeneration) {
                 updateMessage(convId, botMessageId, { mediaType: 'video' });
-                const videoUrl = await generateVideo(text, singleFile, aspectRatio as any, (progressText) => {
+                const videoUrl = await generateVideo(text, singleMediaFile, aspectRatio as any, (progressText) => {
                     updateMessage(convId, botMessageId, { progressText });
                 });
                 updateMessage(convId, botMessageId, { isProcessing: false, videoUrl });
@@ -197,8 +204,8 @@ export const useChat = (
                 let fullResponseText = '';
                 
                 for await (const chunk of generateText(
-                    text,
-                    attachedFiles,
+                    promptWithContext,
+                    mediaFiles,
                     history,
                     model,
                     useSearch,
@@ -340,10 +347,21 @@ export const useChat = (
             // Ensure the conversation document exists in Firestore before proceeding.
             await createConversation(user.uid, { ...newConv, messages: [] });
         }
+        
+        let initialPrompt = "Summarize this document, identify the key topics, and provide 3-5 important takeaways.";
+        const filesForApi: AttachedFile[] = [];
+
+        // If it's a text file, embed its content in the prompt.
+        // Otherwise, attach it as a media file.
+        if (file.textContent) {
+            initialPrompt = `--- Content of ${file.name} ---\n${file.textContent}\n\n---\n\n${initialPrompt}`;
+        } else {
+            filesForApi.push(file);
+        }
 
         await sendMessage(
-            "Summarize this document, identify the key topics, and provide 3-5 important takeaways.",
-            [file],
+            initialPrompt,
+            filesForApi,
             '1:1', // Default aspect ratio, not used for doc analysis
             // Pass the new conversation object to bypass stale state in sendMessage
             { conversationId: newConv.id, conversation: newConv }

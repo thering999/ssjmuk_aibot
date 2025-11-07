@@ -15,9 +15,8 @@ export const generateVideo = async (
     aspectRatio: '16:9' | '9:16',
     onProgress: (status: string) => void
 ): Promise<string> => {
-    if ((window as any).aistudio && !(await (window as any).aistudio.hasSelectedApiKey())) {
-        throw new ApiKeyNotSelectedError();
-    }
+    // The explicit API key check has been removed as per user request.
+    // The application now assumes a valid key is present in the environment.
     
     // Create a new instance right before the call to get the latest key
     const ai = getAiClient();
@@ -26,10 +25,9 @@ export const generateVideo = async (
     let operation: Operation<any>;
     try {
       operation = await ai.models.generateVideos({
-          // Fix: Updated to the recommended model for video generation.
           model: 'veo-3.1-fast-generate-preview',
           prompt: prompt,
-          ...(file && { image: { imageBytes: file.base64, mimeType: file.mimeType } }),
+          ...(file && file.base64 && { image: { imageBytes: file.base64, mimeType: file.mimeType } }),
           config: {
               numberOfVideos: 1,
               resolution: '720p',
@@ -37,9 +35,8 @@ export const generateVideo = async (
           }
       });
     } catch(err: any) {
-        if (err.message?.includes("Requested entity was not found.")) {
-             throw new ApiKeyNotSelectedError("Invalid API Key. Please select another key.");
-        }
+        // The specific check for API key errors has been removed.
+        // The original error will now be thrown to be handled generically.
         throw err;
     }
 

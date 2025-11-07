@@ -3,7 +3,8 @@ import type { ChatMessage, AttachedFile } from '../types';
 import Message from './Message';
 import ChatInput from './ChatInput';
 import WelcomeScreen from './WelcomeScreen';
-import { processFiles } from '../utils/fileUtils';
+import { useTranslation } from '../hooks/useTranslation';
+import { processFiles, SUPPORTED_GENERATE_CONTENT_MIME_TYPES } from '../utils/fileUtils';
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
@@ -16,6 +17,7 @@ interface ChatInterfaceProps {
   retryMessage: (messageId: string) => void;
   stopGeneration: () => void;
   onFileForNewChat: (file: File) => void;
+  onShowToast: (message: string) => void;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -29,9 +31,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   retryMessage,
   stopGeneration,
   onFileForNewChat,
+  onShowToast,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const { t } = useTranslation();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -76,12 +80,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         onFileForNewChat(e.dataTransfer.files[0]);
       } else {
         // Otherwise, attach files to the current input
-        const newFiles = await processFiles(Array.from(e.dataTransfer.files));
+        const newFiles = await processFiles(
+            Array.from(e.dataTransfer.files),
+            SUPPORTED_GENERATE_CONTENT_MIME_TYPES,
+            (fileName, fileType) => {
+                onShowToast(t('toastUnsupportedFile', { fileName, fileType }));
+            }
+        );
         setAttachedFiles(prev => [...prev, ...newFiles]);
       }
       e.dataTransfer.clearData();
     }
-  }, [isNewChat, onFileForNewChat, setAttachedFiles]);
+  }, [isNewChat, onFileForNewChat, setAttachedFiles, onShowToast, t]);
 
   return (
     <div 
@@ -114,6 +124,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           aspectRatio={aspectRatio}
           setAspectRatio={setAspectRatio}
           onStopGeneration={stopGeneration}
+          onShowToast={onShowToast}
         />
       </div>
 
@@ -127,7 +138,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div className="w-full h-full border-4 border-dashed border-teal-400 rounded-2xl flex flex-col items-center justify-center text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                 <h2 className="text-2xl font-bold">
-                    {isNewChat ? "Drop document to start a new chat" : "Drop files to attach"}
+                    {isNewChat ? "Drop file to start a new chat" : "Drop files to attach"}
                 </h2>
             </div>
           </div>

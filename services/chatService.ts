@@ -1,10 +1,32 @@
-import { Content, Part, GenerateContentResponse, Type } from "@google/genai";
+import { Content, Part, GenerateContentResponse, Type, FunctionDeclaration } from "@google/genai";
+import type { TFunction } from 'i18next';
 import type { AttachedFile, ModelType, Geolocation, ChatMessageSource, ChatMessage } from '../types';
 import { clinicFinderTool } from '../tools/clinicFinder';
 import { getClinicInfo } from './clinicService';
 import { ai } from './geminiService';
 
-// Fix: Updated model names to conform to the latest guidelines.
+/**
+ * Safely extracts text from a Gemini API response object.
+ * This avoids console warnings about non-text parts (e.g., thoughtSignature)
+ * by manually concatenating only the text parts from the response candidates.
+ * @param response The GenerateContentResponse or a stream chunk.
+ * @returns The extracted text as a single string.
+ */
+function extractText(response: any): string {
+    if (!response?.candidates || response.candidates.length === 0) {
+        return '';
+    }
+    const candidate = response.candidates[0];
+    if (!candidate?.content || !candidate.content.parts) {
+        return '';
+    }
+    return candidate.content.parts
+        .map((part: any) => part.text)
+        .filter((text: string | undefined) => text !== undefined)
+        .join('');
+}
+
+
 const modelMap: Record<ModelType, string> = {
     'flash-lite': 'gemini-flash-lite-latest',
     'flash': 'gemini-2.5-flash',
@@ -82,12 +104,14 @@ export async function* generateText(
     const parts: Part[] = [{ text: prompt }];
     if (files && files.length > 0) {
         for (const file of files) {
-            parts.push({
-                inlineData: {
-                    data: file.base64,
-                    mimeType: file.mimeType,
-                }
-            });
+            if (file.base64) {
+                parts.push({
+                    inlineData: {
+                        data: file.base64,
+                        mimeType: file.mimeType,
+                    }
+                });
+            }
         }
     }
 
@@ -106,10 +130,13 @@ Original instructions: ${systemInstructionText}`;
     
     const config: any = {};
     if (instructionWithKnowledge) {
-        // Fix: Simplified systemInstruction to be a direct string as per guidelines.
         config.systemInstruction = instructionWithKnowledge;
     }
     
+    if (model === 'pro') {
+        config.thinkingConfig = { thinkingBudget: 16384 };
+    }
+
     if (tools.length > 0) {
         config.tools = tools;
     }
@@ -150,7 +177,7 @@ Original instructions: ${systemInstructionText}`;
             if (chunk.done) break;
 
             // Yield text chunks immediately for streaming UI
-            const textChunk = (chunk.value.candidates?.[0]?.content?.parts || []).map(p => p.text).filter(Boolean).join('');
+            const textChunk = extractText(chunk.value);
             if(textChunk) {
                 yield { textChunk: textChunk };
             }
@@ -195,7 +222,7 @@ Original instructions: ${systemInstructionText}`;
                 const chunk = result as IteratorResult<GenerateContentResponse>;
                 if (chunk.done) break;
 
-                const textChunk = (chunk.value.candidates?.[0]?.content?.parts || []).map(p => p.text).filter(Boolean).join('');
+                const textChunk = extractText(chunk.value);
                 if (textChunk) yield { textChunk: textChunk };
 
                  const grounding = chunk.value.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[] | undefined;
@@ -245,7 +272,7 @@ Provide only a JSON array of strings in your response. For example: ["Question 1
             }
         });
 
-        const jsonText = ((response.candidates?.[0]?.content?.parts || []).map(p => p.text).filter(Boolean).join('') ?? '').trim();
+        const jsonText = extractText(response).trim();
         if (!jsonText) {
             console.warn("generateFollowUpQuestions: received empty text response from model.");
             return [];
@@ -271,5 +298,62 @@ Provide only a JSON array of strings in your response. For example: ["Question 1
     } catch (error) {
         console.error("Error generating follow-up questions:", error);
         throw error; // Re-throw so the caller can handle it
+    }
+};
+
+export const getAvailableVoiceCommands = (t: TFunction): FunctionDeclaration[] => [
+    {
+        name: 'newChat',
+        description: t('voiceCommandDescNewChat'),
+    },
+    {
+        name: 'readLastMessage',
+        description: t('voiceCommandDescReadLastMessage'),
+    },
+    {
+        name: 'setDarkMode',
+        description: t('voiceCommandDescSetDarkMode'),
+    },
+    {
+        name: 'setLightMode',
+        description: t('voiceCommandDescSetLightMode'),
+    },
+    {
+        name: 'toggleCamera',
+        description: t('voiceCommandDescToggleCamera'),
+    },
+    {
+        name: 'analyzeImage',
+        description: t('voiceCommandDescAnalyzeImage'),
+    },
+    {
+        name: 'switchToLiveMode',
+        description: t('voiceCommandDescSwitchToLive'),
+    }
+];
+
+
+export const interpretVoiceCommand = async (commandPhrase: string, t: TFunction): Promise<string | null> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash', // Fast model for quick command recognition
+            contents: `The user said: "${commandPhrase}". Which function should be called?`,
+            config: {
+                tools: [{ functionDeclarations: getAvailableVoiceCommands(t) }],
+            },
+        });
+        
+        const functionCall = response.functionCalls?.[0];
+        if (functionCall) {
+            console.log(`[Voice Intent] Gemini matched "${commandPhrase}" to function: ${functionCall.name}`);
+            return functionCall.name;
+        }
+
+        console.log(`[Voice Intent] Gemini could not match a function for "${commandPhrase}"`);
+        return null;
+
+    } catch (error) {
+        console.error("Error interpreting voice command:", error);
+        return null;
     }
 };

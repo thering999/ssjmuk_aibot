@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import type { AttachedFile, ModelType, Geolocation, Conversation, EmergencyResult } from './types';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import type { AttachedFile, ModelType, Geolocation, Conversation, EmergencyResult, LiveConversationHandle } from './types';
 import { useTheme } from './hooks/useTheme';
 import { useChat } from './hooks/useChat';
 import { useTranslation } from './hooks/useTranslation';
@@ -7,7 +7,7 @@ import { usePersistentState } from './hooks/usePersistentState';
 import { useAuth } from './hooks/useAuth';
 import { useVoiceCommands } from './hooks/useVoiceCommands';
 import { textToSpeech, isTtsSupported as checkTtsSupport } from './services/ttsService';
-import { processFiles } from './utils/fileUtils';
+import { processFiles, SUPPORTED_GENERATE_CONTENT_MIME_TYPES } from './utils/fileUtils';
 import { shareConversation as apiShareConversation } from './services/firebase';
 import { ApiKeyNotSelectedError } from './services/videoService';
 import { findNearestEmergencyRoom } from './services/emergencyService';
@@ -25,6 +25,7 @@ import EmergencyModal from './components/EmergencyModal';
 import Toast from './components/Toast';
 import ShareModal from './components/ShareModal';
 import SharedConversationView from './components/SharedConversationView';
+import LoadingIndicator from './components/LoadingIndicator';
 
 export type AppMode = 'chat' | 'live' | 'analyzer' | 'hub' | 'dashboard';
 
@@ -48,6 +49,7 @@ const App: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<AppMode>('chat');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [aspectRatio, setAspectRatio] = useState('1:1');
+  const liveConversationRef = useRef<LiveConversationHandle>(null);
 
   // Modals and notifications
   const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
@@ -125,9 +127,15 @@ const App: React.FC = () => {
   }, [retryMessage, activeConversation]);
 
   const handleFileForNewChat = (file: File) => {
-    processFiles([file]).then(processed => {
-      setDocToConfirm(processed[0]);
-      setIsDocConfirmOpen(true);
+    if (!SUPPORTED_GENERATE_CONTENT_MIME_TYPES.includes(file.type)) {
+      showToast(t('toastUnsupportedFileForNewChat'));
+      return;
+    }
+    processFiles([file], SUPPORTED_GENERATE_CONTENT_MIME_TYPES, () => {}).then(processed => {
+      if (processed.length > 0) {
+        setDocToConfirm(processed[0]);
+        setIsDocConfirmOpen(true);
+      }
     });
   };
 
@@ -226,8 +234,8 @@ const App: React.FC = () => {
   }, [t]);
 
   const commands = useMemo(() => ({
-      [t('voiceCommandNewChat').toLowerCase()]: () => { createNewChat(); showToast(t('toastNewChat')); },
-      [t('voiceCommandReadLast').toLowerCase()]: () => {
+      newChat: () => { createNewChat(); showToast(t('toastNewChat')); },
+      readLastMessage: () => {
           const lastMessage = activeConversation?.messages.filter(m => m.sender === 'bot').slice(-1)[0];
           if (lastMessage?.text) {
               showToast(t('toastReading'));
@@ -236,11 +244,42 @@ const App: React.FC = () => {
               showToast(t('toastNoMessage'));
           }
       },
-      [t('voiceCommandDarkMode').toLowerCase()]: () => { if (theme !== 'dark') { toggleTheme(); showToast(t('toastDarkMode')); } },
-      [t('voiceCommandLightMode').toLowerCase()]: () => { if (theme !== 'light') { toggleTheme(); showToast(t('toastLightMode')); } }
-  }), [createNewChat, activeConversation, showToast, t, theme, toggleTheme]);
+      setDarkMode: () => { if (theme !== 'dark') { toggleTheme(); showToast(t('toastDarkMode')); } },
+      setLightMode: () => { if (theme !== 'light') { toggleTheme(); showToast(t('toastLightMode')); } },
+      switchToLiveMode: () => {
+        setCurrentMode('live');
+        showToast('Switching to Live Conversation mode.');
+      },
+      toggleCamera: async () => {
+          if (currentMode !== 'live') {
+              setCurrentMode('live');
+              showToast(t('toastSwitchedToLive'));
+              // Give the component a moment to mount before trying to toggle the camera
+              setTimeout(() => {
+                 liveConversationRef.current?.triggerCameraToggle().then(isOn => {
+                    showToast(isOn ? t('toastCameraOn') : t('toastCameraOff'));
+                 });
+              }, 500);
+          } else {
+              const cameraIsOn = await liveConversationRef.current?.triggerCameraToggle();
+              showToast(cameraIsOn ? t('toastCameraOn') : t('toastCameraOff'));
+          }
+      },
+      analyzeImage: () => {
+          if (currentMode !== 'live') {
+              showToast(t('toastNotInLiveMode'));
+              return;
+          }
+          const success = liveConversationRef.current?.triggerFrameCapture();
+          if (success) {
+              showToast(t('toastAnalyzing'));
+          } else {
+              showToast(t('toastCameraNotOn'));
+          }
+      }
+  }), [createNewChat, activeConversation, showToast, t, theme, toggleTheme, currentMode]);
 
-  const { isListening: isVoiceCommandListening, startListening, stopListening, isCommandSupported } = useVoiceCommands(commands, language, t);
+  const { isListening: isVoiceCommandListening, startListening, stopListening, isCommandSupported } = useVoiceCommands(commands, language, t, showToast);
 
   const handleToggleVoiceCommand = () => {
     isVoiceCommandListening ? stopListening() : startListening();
@@ -269,11 +308,12 @@ const App: React.FC = () => {
               retryMessage={handleRetryMessage}
               stopGeneration={stopGeneration}
               onFileForNewChat={handleFileForNewChat}
+              onShowToast={showToast}
             />
         }
-        return <div className="flex-1 flex items-center justify-center"><svg className="animate-spin h-8 w-8 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>;
+        return <div className="flex-1 flex items-center justify-center"><LoadingIndicator className="h-8 w-8 text-teal-600" /></div>;
       case 'live':
-        return <LiveConversation />;
+        return <LiveConversation ref={liveConversationRef} />;
       case 'analyzer':
         return <HealthReportAnalyzer onShowToast={showToast} />;
       case 'hub':

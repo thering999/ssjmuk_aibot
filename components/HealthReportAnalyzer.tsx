@@ -1,11 +1,11 @@
-
 import React, { useState, useCallback, useRef } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
-import { processFiles } from '../utils/fileUtils';
+import { processFiles, SUPPORTED_IMAGE_MIME_TYPES } from '../utils/fileUtils';
 import { analyzeHealthReport } from '../services/healthReportService';
 import { saveHealthRecord } from '../services/healthDashboardService';
 import type { AttachedFile, HealthReportAnalysis, AnalyzedMetric } from '../types';
+import LoadingIndicator from './LoadingIndicator';
 
 const StatusIndicator: React.FC<{ status: AnalyzedMetric['status'] }> = ({ status }) => {
     const { t } = useTranslation();
@@ -40,21 +40,41 @@ const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileSelect = async (selectedFile: File) => {
-        if (selectedFile && selectedFile.type.startsWith('image/')) {
-            try {
-                const [processedFile] = await processFiles([selectedFile]);
-                setFile(processedFile);
-                setAnalysis(null);
-                setError(null);
-            } catch (err) {
-                console.error(err);
-                setError("Failed to process file.");
-            }
-        } else {
-            setError("Please upload a valid image file.");
+    const handleFileSelect = useCallback(async (selectedFile: File) => {
+        const MAX_FILE_SIZE_MB = 10;
+        const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+        if (!selectedFile) return;
+
+        // Clear previous state on new file selection
+        setFile(null);
+        setAnalysis(null);
+        setError(null);
+
+        if (!SUPPORTED_IMAGE_MIME_TYPES.includes(selectedFile.type)) {
+            setError(t('analyzerErrorInvalidFile'));
+            return;
         }
-    };
+
+        if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+            setError(t('analyzerErrorFileSize', { maxSize: `${MAX_FILE_SIZE_MB}MB` }));
+            return;
+        }
+
+        try {
+            const processedFiles = await processFiles(
+                [selectedFile],
+                SUPPORTED_IMAGE_MIME_TYPES,
+                () => {} // Error is already handled above, so this is a no-op
+            );
+            if (processedFiles.length > 0) {
+                setFile(processedFiles[0]);
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Failed to process file.");
+        }
+    }, [t]);
 
     const handleDrag = useCallback((e: React.DragEvent<HTMLDivElement>, enter: boolean) => {
         e.preventDefault();
@@ -65,10 +85,13 @@ const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast
     const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
         handleDrag(e, false);
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            if (e.dataTransfer.files.length > 1) {
+                onShowToast(t('analyzerToastMultipleFiles'));
+            }
             handleFileSelect(e.dataTransfer.files[0]);
             e.dataTransfer.clearData();
         }
-    }, [handleDrag]);
+    }, [handleDrag, handleFileSelect, onShowToast, t]);
 
     const handleAnalyze = async () => {
         if (!file) return;
@@ -123,23 +146,28 @@ const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast
                 </div>
                 
                 {!file && (
-                     <div
-                        onDragEnter={(e) => handleDrag(e, true)}
-                        onDragLeave={(e) => handleDrag(e, false)}
-                        onDragOver={(e) => handleDrag(e, true)}
-                        onDrop={handleDrop}
-                        className={`w-full p-10 border-2 border-dashed rounded-xl transition-colors duration-200 ${isDragging ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20' : 'border-gray-300 dark:border-gray-600'}`}
-                    >
-                        <input type="file" ref={fileInputRef} onChange={(e) => e.target.files && handleFileSelect(e.target.files[0])} accept="image/*" className="hidden" />
-                        <div className="flex flex-col items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                            <p className="text-gray-600 dark:text-gray-400">
-                                {t('analyzerUploadPrompt').split(', or ')[0]}, or{' '}
-                                <button onClick={() => fileInputRef.current?.click()} className="font-semibold text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300 focus:outline-none">
-                                    {t('analyzerUploadPrompt').split(', or ')[1]}
-                                </button>
-                            </p>
+                    <div>
+                         <div
+                            onDragEnter={(e) => handleDrag(e, true)}
+                            onDragLeave={(e) => handleDrag(e, false)}
+                            onDragOver={(e) => handleDrag(e, true)}
+                            onDrop={handleDrop}
+                            className={`w-full p-10 border-2 border-dashed rounded-xl transition-colors duration-200 ${isDragging ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20' : 'border-gray-300 dark:border-gray-600'}`}
+                        >
+                            <input type="file" ref={fileInputRef} onChange={(e) => e.target.files && handleFileSelect(e.target.files[0])} accept="image/*" className="hidden" />
+                            <div className="flex flex-col items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                    {t('analyzerUploadPrompt').split(', or ')[0]}, or{' '}
+                                    <button onClick={() => fileInputRef.current?.click()} className="font-semibold text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300 focus:outline-none">
+                                        {t('analyzerUploadPrompt').split(', or ')[1]}
+                                    </button>
+                                </p>
+                            </div>
                         </div>
+                        {error && (
+                            <p className="mt-2 text-center text-sm text-red-600 dark:text-red-400">{error}</p>
+                        )}
                     </div>
                 )}
                 
@@ -156,7 +184,7 @@ const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast
                                 >
                                     {isLoading ? (
                                         <>
-                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            <LoadingIndicator className="-ml-1 mr-3 h-5 w-5 text-white" />
                                             {t('analyzerLoading')}
                                         </>
                                     ) : (

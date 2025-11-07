@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { interpretVoiceCommand } from '../services/chatService';
+// @google/genai-fix: Import TFunction to correctly type the translation function, matching the expected type in `interpretVoiceCommand`.
+import type { TFunction } from 'i18next';
 
 // Define a minimal interface for SpeechRecognition to satisfy TypeScript
 interface SpeechRecognition {
@@ -19,35 +22,47 @@ declare global {
   }
 }
 
-// Map of commands to their callback functions
-type VoiceCommands = Record<string, () => void>;
+// Map of command function names to their callback functions
+type VoiceCommandActions = Record<string, () => void>;
 
 export const useVoiceCommands = (
-  commands: VoiceCommands,
+  actions: VoiceCommandActions,
   language: 'en' | 'th',
-  t: (key: string) => string
+  t: TFunction,
+  onShowToast: (message: string) => void
 ) => {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const commandsRef = useRef(commands);
+  const actionsRef = useRef(actions);
+  const isProcessingCommand = useRef(false); // To prevent multiple API calls
 
-  // Keep the commands ref up to date without re-triggering the effect
+  // Keep the actions ref up to date without re-triggering the effect
   useEffect(() => {
-    commandsRef.current = commands;
-  }, [commands]);
+    actionsRef.current = actions;
+  }, [actions]);
 
   const isCommandSupported =
     typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   
   const stopListening = useCallback(() => {
-    if (isListening) {
-      setIsListening(false);
+    if (recognitionRef.current) {
+        recognitionRef.current.stop();
     }
-  }, [isListening]);
+    setIsListening(false);
+  }, []);
+
+  const startListening = useCallback(() => {
+    if (!isListening && isCommandSupported) {
+      setIsListening(true);
+    }
+  }, [isListening, isCommandSupported]);
 
   useEffect(() => {
     if (!isListening || !isCommandSupported) {
+      if (recognitionRef.current) {
+          recognitionRef.current.stop();
+      }
       return;
     }
 
@@ -59,44 +74,46 @@ export const useVoiceCommands = (
     const recognition = recognitionRef.current;
 
     recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.interimResults = false; // We only want the final transcript
     recognition.lang = language === 'th' ? 'th-TH' : 'en-US';
 
-    recognition.onresult = (event) => {
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        }
-      }
+    recognition.onresult = async (event) => {
+      if (isProcessingCommand.current) return;
 
-      const transcript = finalTranscript.toLowerCase().trim();
+      const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+      
       if (transcript.startsWith(WAKE_WORD)) {
         const commandPhrase = transcript.substring(WAKE_WORD.length).trim();
-        console.log(`[Voice Command] Heard command: "${commandPhrase}"`);
+        console.log(`[Voice Command] Heard command phrase: "${commandPhrase}"`);
         
-        // Handle sleep command
         if (commandPhrase === GO_TO_SLEEP_COMMAND) {
+             onShowToast(t('toastVoiceSleep'));
              stopListening();
              return;
         }
         
-        // Find and execute the command
-        const commandKeys = Object.keys(commandsRef.current);
-        const foundCommand = commandKeys.find(key => commandPhrase.includes(key));
-        
-        if (foundCommand) {
-          console.log(`[Voice Command] Executing: "${foundCommand}"`);
-          commandsRef.current[foundCommand]();
-          // Stop and restart to clear the transcript buffer
-          recognition.stop();
+        if (commandPhrase) {
+            isProcessingCommand.current = true;
+            onShowToast(t('toastVoiceProcessing'));
+            
+            const functionNameToCall = await interpretVoiceCommand(commandPhrase, t);
+            
+            if (functionNameToCall && actionsRef.current[functionNameToCall]) {
+                console.log(`[Voice Command] Executing: "${functionNameToCall}"`);
+                actionsRef.current[functionNameToCall]();
+            } else {
+                 onShowToast(t('toastVoiceUnrecognized'));
+                 console.log(`[Voice Command] Unrecognized or unmapped command: "${commandPhrase}"`);
+            }
+
+            // Stop and restart to clear buffer and wait for next wake word
+            recognition.stop();
+            isProcessingCommand.current = false;
         }
       }
     };
 
     recognition.onend = () => {
-      // If we are still supposed to be listening, restart recognition.
-      // This handles mic timeouts or when we stop it after a command.
       if (isListening) {
         recognition.start();
       }
@@ -104,29 +121,24 @@ export const useVoiceCommands = (
     
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
-      // Ignore common, recoverable errors that don't require stopping the service.
-      // 'aborted' is expected when we programmatically stop recognition after a command.
-      if (event.error === 'no-speech' || event.error === 'network' || event.error === 'aborted') {
-        // Don't stop listening
-      } else {
-        setIsListening(false);
-      }
+       if (event.error !== 'no-speech' && event.error !== 'aborted') {
+         setIsListening(false);
+       }
     };
 
     recognition.start();
     console.log('[Voice Command] Listening for wake word...');
 
     return () => {
-      recognition.stop();
-      recognitionRef.current = null;
+      if (recognitionRef.current) {
+          recognitionRef.current.onresult = null;
+          recognitionRef.current.onend = null;
+          recognitionRef.current.onerror = null;
+          recognitionRef.current.stop();
+          recognitionRef.current = null;
+      }
     };
-  }, [isListening, isCommandSupported, language, t, stopListening]);
-
-  const startListening = useCallback(() => {
-    if (!isListening) {
-      setIsListening(true);
-    }
-  }, [isListening]);
+  }, [isListening, isCommandSupported, language, t, stopListening, onShowToast]);
 
   return { isListening, startListening, stopListening, isCommandSupported };
 };

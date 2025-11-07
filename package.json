@@ -1,5 +1,5 @@
 {
-  "name": "สสจ.มุกดาหาร-ai-bot",
+  "name": "สสจ.มุกดาหาร-ai-chatbot",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -20,7 +20,9 @@
     "uuid": "^13.0.0",
     "firebase": "^12.5.0",
     "react-i18next": "^16.2.4",
-    "i18next": "^25.6.0"
+    "i18next": "^25.6.0",
+    "mammoth": "1.8.0",
+    "pdfjs-dist": "^5.4.394"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

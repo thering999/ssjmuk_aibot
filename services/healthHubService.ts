@@ -1,6 +1,28 @@
 import { ai } from "./geminiService";
 import type { HealthHubArticle } from '../types';
 
+/**
+ * Safely extracts text from a Gemini API response object.
+ * This avoids console warnings about non-text parts (e.g., thoughtSignature)
+ * by manually concatenating only the text parts from the response candidates.
+ * @param response The GenerateContentResponse or a stream chunk.
+ * @returns The extracted text as a single string.
+ */
+function extractText(response: any): string {
+    if (!response?.candidates || response.candidates.length === 0) {
+        return '';
+    }
+    const candidate = response.candidates[0];
+    if (!candidate?.content || !candidate.content.parts) {
+        return '';
+    }
+    return candidate.content.parts
+        .map((part: any) => part.text)
+        .filter((text: string | undefined) => text !== undefined)
+        .join('');
+}
+
+
 export const fetchHealthNews = async (): Promise<HealthHubArticle[]> => {
     try {
         const prompt = `Please act as a public health journalist for Mukdahan, Thailand.
@@ -14,11 +36,12 @@ Your response MUST be a single JSON object wrapped in a markdown code block (e.g
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],
-                temperature: 0.5
+                temperature: 0.5,
+                thinkingConfig: { thinkingBudget: 8192 }
             },
         });
         
-        let jsonText = ((response.candidates?.[0]?.content?.parts || []).map(p => p.text).filter(Boolean).join('')).trim();
+        let jsonText = extractText(response).trim();
 
         // The model might return markdown ```json ... ```. Strip it.
         const jsonMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);

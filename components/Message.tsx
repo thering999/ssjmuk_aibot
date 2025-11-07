@@ -5,6 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { ChatMessage, ChatMessageSource, AttachedFile, ClinicInfo } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
+import LoadingIndicator from './LoadingIndicator';
 
 interface MessageProps {
   message: ChatMessage;
@@ -24,7 +25,7 @@ const UserAvatar: React.FC = () => (
     </div>
 );
 
-const LoadingIndicator: React.FC = () => (
+const ThinkingIndicator: React.FC = () => (
   <div className="flex space-x-1">
     <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
     <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -36,7 +37,7 @@ const LoadingIndicator: React.FC = () => (
 const AttachedFilePill: React.FC<{ file: AttachedFile }> = ({ file }) => {
     return (
         <div className="bg-white/50 dark:bg-black/20 rounded-lg flex items-center px-2 py-1 space-x-2 text-sm max-w-full mt-2">
-            {file.mimeType.startsWith('image/') ? (
+            {file.mimeType.startsWith('image/') && file.base64 ? (
                 <img src={`data:${file.mimeType};base64,${file.base64}`} alt="preview" className="w-5 h-5 rounded object-cover flex-shrink-0" />
             ) : (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
@@ -156,7 +157,7 @@ const ToolUseDisplay: React.FC<{ toolUse: ChatMessage['toolUse'], onSendFollowUp
             {toolUse.isCalling && (
                 <div className="flex flex-col">
                     <div className="flex items-center">
-                        <svg className="animate-spin h-3 w-3 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <LoadingIndicator className="h-3 w-3 mr-2 text-current" />
                         {t('callingTool', { toolName: toolUse.name })}
                     </div>
                     <pre className="mt-2 p-2 bg-white dark:bg-gray-800 rounded text-xs overflow-x-auto">
@@ -262,7 +263,7 @@ const Message: React.FC<MessageProps> = ({ message, onRetry, onSendFollowUp }) =
                 </div>
             ) : (
                 <div>
-                    {isThinking && !text && <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 italic"><LoadingIndicator /> <span className="ml-2">{t('thinking')}</span></div>}
+                    {isThinking && !text && <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 italic"><ThinkingIndicator /> <span className="ml-2">{t('thinking')}</span></div>}
                     
                     {text && (
                         <ReactMarkdown
@@ -286,7 +287,7 @@ const Message: React.FC<MessageProps> = ({ message, onRetry, onSendFollowUp }) =
 
                     {isGeneratingFollowUps && (
                          <div className="mt-3 flex items-center text-xs text-gray-500 dark:text-gray-400 italic">
-                           <LoadingIndicator /> <span className="ml-2">{t('generatingFollowUps')}</span>
+                           <ThinkingIndicator /> <span className="ml-2">{t('generatingFollowUps')}</span>
                          </div>
                     )}
                     <FollowUpQuestions questions={followUpQuestions || []} onSend={onSendFollowUp} />

@@ -1,7 +1,27 @@
-
-
 import type { Geolocation, EmergencyResult } from '../types';
 import { ai } from './geminiService';
+
+/**
+ * Safely extracts text from a Gemini API response object.
+ * This avoids console warnings about non-text parts (e.g., thoughtSignature)
+ * by manually concatenating only the text parts from the response candidates.
+ * @param response The GenerateContentResponse or a stream chunk.
+ * @returns The extracted text as a single string.
+ */
+function extractText(response: any): string {
+    if (!response?.candidates || response.candidates.length === 0) {
+        return '';
+    }
+    const candidate = response.candidates[0];
+    if (!candidate?.content || !candidate.content.parts) {
+        return '';
+    }
+    return candidate.content.parts
+        .map((part: any) => part.text)
+        .filter((text: string | undefined) => text !== undefined)
+        .join('');
+}
+
 
 /**
  * Finds the nearest hospital with an emergency room using Gemini with Google Maps grounding.
@@ -33,7 +53,7 @@ export const findNearestEmergencyRoom = async (location: Geolocation): Promise<E
     
     const response = await ai.models.generateContent(params);
 
-    const text = ((response.candidates?.[0]?.content?.parts || []).map(p => p.text).filter(Boolean).join('')).trim();
+    const text = extractText(response).trim();
     if (text) {
         const lines = text.split('\n');
         if (lines.length >= 2) {
