@@ -9,7 +9,8 @@
       "Where is the nearest clinic to me?",
       "Tell me about the PM2.5 situation in Mukdahan.",
       "How do I apply for a health certificate?",
-      "Can you analyze a health report for me?"
+      "Can you analyze a health report for me?",
+      "Estimate the calories from a photo of my meal"
     ],
     "capabilityTitle": "My Capabilities",
     "capabilityChat": "Conversational AI",
@@ -18,6 +19,8 @@
     "capabilityImageDesc": "Analyze and discuss images.",
     "capabilityDoc": "File Q&A",
     "capabilityDocDesc": "Ask questions about uploaded images, videos, or documents.",
+    "capabilityFood": "Food Analysis",
+    "capabilityFoodDesc": "Estimate calories from a photo of your meal.",
     "capabilityVoice": "Voice Commands",
     "capabilityVoiceDesc": "Control the app with your voice.",
     "recommendSystem": "Recommend a healthy lunch menu for me",
@@ -200,6 +203,14 @@
     "dashboardSaveDisabledTooltip": "Sign in to save reports to your dashboard.",
     "dashboardDeleteConfirm": "Are you sure you want to delete this health record? This action cannot be undone.",
     "dashboardDeleteSuccess": "Record deleted successfully.",
-    "dashboardDeleteError": "Failed to delete the record."
+    "dashboardDeleteError": "Failed to delete the record.",
+    "dashboardChartTitle": "Health Metric Trends",
+    "dashboardChartSelectMetric": "Select a metric:",
+    "dashboardChartMultiSelectTitle": "Select metrics to compare:",
+    "dashboardChartNoData": "Not enough data to display a trend. At least two reports with the same metric are needed.",
+    "dashboardChartNoMetrics": "No trackable metrics found in your saved reports.",
+    "dashboardSummaryTitle": "Latest Health Vitals",
+    "dashboardSummarySubtitle": "From your report on {{date}}",
+    "dashboardNoVitals": "No key metrics found in your latest report to summarize."
   }
 }

@@ -22,7 +22,10 @@
     "react-i18next": "^16.2.4",
     "i18next": "^25.6.0",
     "mammoth": "1.8.0",
-    "pdfjs-dist": "^5.4.394"
+    "pdfjs-dist": "^5.4.394",
+    "chart.js": "4.4.3",
+    "react-chartjs-2": "5.2.0",
+    "date-fns": "3.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

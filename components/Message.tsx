@@ -86,10 +86,8 @@ const FollowUpQuestions: React.FC<{ questions: string[], onSend: (q: string) => 
 };
 
 const ClinicInfoCard: React.FC<{ info: ClinicInfo, onSendFollowUp: (q: string) => void }> = ({ info, onSendFollowUp }) => {
-    const handleMapClick = () => {
-        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.address)}`, '_blank');
-    };
-    
+    const [showMap, setShowMap] = useState(false);
+
     return (
         <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 not-prose bg-gray-50 dark:bg-gray-700/50 my-2 text-sm">
             <h4 className="font-semibold text-gray-800 dark:text-gray-100">{info.name}</h4>
@@ -115,13 +113,26 @@ const ClinicInfoCard: React.FC<{ info: ClinicInfo, onSendFollowUp: (q: string) =
                 </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-                <button onClick={handleMapClick} className="text-xs px-2 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
-                    Show on Map
+                <button onClick={() => setShowMap(!showMap)} className="text-xs px-2 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
+                    {showMap ? 'Hide Map' : 'Show on Map'}
                 </button>
+                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.address)}`} target="_blank" rel="noopener noreferrer" className="text-xs px-2 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
+                    Directions
+                </a>
                  <button onClick={() => onSendFollowUp(`What are the services available at ${info.name}?`)} className="text-xs px-2 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
                     Ask about services
                 </button>
             </div>
+            {showMap && (
+                <div className="mt-3 h-48 w-full rounded-md overflow-hidden border border-gray-300 dark:border-gray-600">
+                    <iframe
+                        className="w-full h-full"
+                        loading="lazy"
+                        allowFullScreen
+                        src={`https://maps.google.com/maps?q=${encodeURIComponent(info.address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                    ></iframe>
+                </div>
+            )}
         </div>
     );
 };

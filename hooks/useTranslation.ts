@@ -16,7 +16,8 @@ const translationsEn = {
       "Where is the nearest clinic to me?",
       "Tell me about the PM2.5 situation in Mukdahan.",
       "How do I apply for a health certificate?",
-      "Can you analyze a health report for me?"
+      "Can you analyze a health report for me?",
+      "Estimate the calories from a photo of my meal"
     ],
     "capabilityTitle": "My Capabilities",
     "capabilityChat": "Conversational AI",
@@ -25,6 +26,8 @@ const translationsEn = {
     "capabilityImageDesc": "Analyze and discuss images.",
     "capabilityDoc": "File Q&A",
     "capabilityDocDesc": "Ask questions about uploaded images, videos, or documents.",
+    "capabilityFood": "Food Analysis",
+    "capabilityFoodDesc": "Estimate calories from a photo of your meal.",
     "capabilityVoice": "Voice Commands",
     "capabilityVoiceDesc": "Control the app with your voice.",
     "recommendSystem": "Recommend a healthy lunch menu for me",
@@ -207,7 +210,15 @@ const translationsEn = {
     "dashboardSaveDisabledTooltip": "Sign in to save reports to your dashboard.",
     "dashboardDeleteConfirm": "Are you sure you want to delete this health record? This action cannot be undone.",
     "dashboardDeleteSuccess": "Record deleted successfully.",
-    "dashboardDeleteError": "Failed to delete the record."
+    "dashboardDeleteError": "Failed to delete the record.",
+    "dashboardChartTitle": "Health Metric Trends",
+    "dashboardChartSelectMetric": "Select a metric:",
+    "dashboardChartMultiSelectTitle": "Select metrics to compare:",
+    "dashboardChartNoData": "Not enough data to display a trend. At least two reports with the same metric are needed.",
+    "dashboardChartNoMetrics": "No trackable metrics found in your saved reports.",
+    "dashboardSummaryTitle": "Latest Health Vitals",
+    "dashboardSummarySubtitle": "From your report on {{date}}",
+    "dashboardNoVitals": "No key metrics found in your latest report to summarize."
   }
 };
 
@@ -222,7 +233,8 @@ const translationsTh = {
       "คลินิกที่ใกล้ที่สุดอยู่ที่ไหน?",
       "สถานการณ์ฝุ่น PM2.5 ในมุกดาหารเป็นอย่างไร?",
       "ฉันจะขอใบรับรองแพทย์ได้อย่างไร?",
-      "ช่วยวิเคราะห์ผลตรวจสุขภาพให้หน่อยได้ไหม?"
+      "ช่วยวิเคราะห์ผลตรวจสุขภาพให้หน่อยได้ไหม?",
+      "ประเมินแคลอรี่จากรูปอาหารมื้อนี้ได้ไหม?"
     ],
     "capabilityTitle": "ความสามารถของฉัน",
     "capabilityChat": "สนทนาอัจฉริยะ",
@@ -231,6 +243,8 @@ const translationsTh = {
     "capabilityImageDesc": "วิเคราะห์และพูดคุยเกี่ยวกับรูปภาพ",
     "capabilityDoc": "ถาม-ตอบ ไฟล์",
     "capabilityDocDesc": "ถามคำถามเกี่ยวกับรูปภาพ, วิดีโอ, หรือเอกสารที่อัปโหลด",
+    "capabilityFood": "วิเคราะห์อาหาร",
+    "capabilityFoodDesc": "ประเมินแคลอรี่จากรูปถ่ายมื้ออาหาร",
     "capabilityVoice": "คำสั่งเสียง",
     "capabilityVoiceDesc": "ควบคุมแอปด้วยเสียงของคุณ",
     "recommendSystem": "แนะนำเมนูอาหารกลางวันเพื่อสุขภาพ",
@@ -407,7 +421,15 @@ const translationsTh = {
     "dashboardSaveDisabledTooltip": "กรุณาลงชื่อเข้าใช้เพื่อบันทึกผลตรวจลงแดชบอร์ด",
     "dashboardDeleteConfirm": "คุณแน่ใจหรือไม่ว่าต้องการลบบันทึกสุขภาพนี้? การกระทำนี้ไม่สามารถย้อนกลับได้",
     "dashboardDeleteSuccess": "ลบบันทึกเรียบร้อยแล้ว",
-    "dashboardDeleteError": "ไม่สามารถลบบันทึกได้"
+    "dashboardDeleteError": "ไม่สามารถลบบันทึกได้",
+    "dashboardChartTitle": "แนวโน้มข้อมูลสุขภาพ",
+    "dashboardChartSelectMetric": "เลือกข้อมูล:",
+    "dashboardChartMultiSelectTitle": "เลือกข้อมูลเพื่อเปรียบเทียบ:",
+    "dashboardChartNoData": "ข้อมูลไม่เพียงพอที่จะแสดงแนวโน้ม ต้องมีรายงานอย่างน้อยสองฉบับที่มีข้อมูลเดียวกัน",
+    "dashboardChartNoMetrics": "ไม่พบข้อมูลที่สามารถติดตามได้ในรายงานที่บันทึกไว้",
+    "dashboardSummaryTitle": "ข้อมูลสุขภาพล่าสุด",
+    "dashboardSummarySubtitle": "จากรายงานของคุณเมื่อวันที่ {{date}}",
+    "dashboardNoVitals": "ไม่พบข้อมูลสำคัญในรายงานล่าสุดของคุณเพื่อสรุปผล"
   }
 };
 

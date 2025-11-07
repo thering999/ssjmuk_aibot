@@ -1,9 +1,32 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
 import { getHealthRecords, deleteHealthRecord } from '../services/healthDashboardService';
 import type { HealthRecord, AnalyzedMetric } from '../types';
 import type { TFunction } from 'i18next';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartOptions,
+} from 'chart.js';
+import { format } from 'date-fns';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const StatusIndicator: React.FC<{ status: AnalyzedMetric['status']; t: TFunction }> = ({ status, t }) => {
     const statusMap = {
@@ -16,6 +39,167 @@ const StatusIndicator: React.FC<{ status: AnalyzedMetric['status']; t: TFunction
     const { text, color } = statusMap[status] || statusMap.Unavailable;
     return (
         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>{text}</span>
+    );
+};
+
+const SummaryCards: React.FC<{ latestRecord: HealthRecord | undefined; t: TFunction }> = ({ latestRecord, t }) => {
+    const keyMetrics = useMemo(() => {
+        if (!latestRecord) return [];
+        const KEY_METRIC_NAMES = ['Glucose', 'Cholesterol', 'Triglycerides', 'HDL', 'LDL', 'Hemoglobin'];
+        return latestRecord.analysis.detailedResults.filter(metric => 
+            KEY_METRIC_NAMES.includes(metric.metric)
+        );
+    }, [latestRecord]);
+
+    if (!latestRecord) return null;
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="font-bold text-gray-800 dark:text-gray-100">{t('dashboardSummaryTitle')}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('dashboardSummarySubtitle', { date: new Date(latestRecord.createdAt).toLocaleDateString() })}</p>
+            {keyMetrics.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {keyMetrics.map(metric => (
+                        <div key={metric.metric} className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                            <div className="flex justify-between items-start">
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{metric.metric}</span>
+                                <StatusIndicator status={metric.status} t={t} />
+                            </div>
+                            <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
+                                {metric.value} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">{metric.unit}</span>
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Range: {metric.range}</p>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                 <p className="text-sm text-center text-gray-500 dark:text-gray-400 py-4">{t('dashboardNoVitals')}</p>
+            )}
+        </div>
+    );
+};
+
+
+const HealthTrendChart: React.FC<{ records: HealthRecord[]; t: TFunction }> = ({ records, t }) => {
+    const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+    
+    const { trackableMetrics, chartData } = useMemo(() => {
+        const metricCounts: Record<string, number> = {};
+        const allMetricsData: Record<string, { x: number; y: number }[]> = {};
+
+        records.forEach(record => {
+            record.analysis.detailedResults.forEach(metric => {
+                const numericValue = parseFloat(metric.value.replace(/[^0-9.]/g, ''));
+                if (!isNaN(numericValue)) {
+                    if (!allMetricsData[metric.metric]) {
+                        metricCounts[metric.metric] = 0;
+                        allMetricsData[metric.metric] = [];
+                    }
+                    metricCounts[metric.metric]++;
+                    allMetricsData[metric.metric].push({
+                        x: record.createdAt,
+                        y: numericValue
+                    });
+                }
+            });
+        });
+
+        const trackableMetrics = Object.keys(metricCounts).filter(m => metricCounts[m] >= 2).sort();
+        
+        const colors = ['#14b8a6', '#3b82f6', '#ec4899', '#f97316', '#8b5cf6', '#ef4444'];
+        
+        const datasets = selectedMetrics.map((metric, index) => {
+             const dataForMetric = allMetricsData[metric]?.sort((a, b) => a.x - b.x) || [];
+             return {
+                label: metric,
+                data: dataForMetric.map(d => d.y),
+                borderColor: colors[index % colors.length],
+                backgroundColor: `${colors[index % colors.length]}33`, // Add alpha for fill
+                fill: true,
+                tension: 0.1,
+            };
+        });
+
+        // Use the labels from the first selected metric's data
+        const firstMetricData = allMetricsData[selectedMetrics[0]]?.sort((a, b) => a.x - b.x) || [];
+
+        const chartData = {
+            labels: firstMetricData.map(d => format(new Date(d.x), 'MMM d, yy')),
+            datasets: datasets,
+        };
+
+        return { trackableMetrics, chartData };
+    }, [records, selectedMetrics]);
+
+    useEffect(() => {
+        // Set a default metric to be selected when the component loads
+        if (trackableMetrics.length > 0 && selectedMetrics.length === 0) {
+            setSelectedMetrics([trackableMetrics[0]]);
+        }
+    }, [trackableMetrics, selectedMetrics]);
+    
+    const handleMetricToggle = (metric: string) => {
+        setSelectedMetrics(prev => 
+            prev.includes(metric) 
+                ? prev.filter(m => m !== metric)
+                : [...prev, metric]
+        );
+    };
+
+    const chartOptions: ChartOptions<'line'> = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' as const, labels: { color: document.body.classList.contains('dark') ? '#D1D5DB' : '#4B5563' } },
+            title: { display: false },
+        },
+        scales: {
+            x: { ticks: { color: document.body.classList.contains('dark') ? '#9CA3AF' : '#6B7280' } },
+            y: { ticks: { color: document.body.classList.contains('dark') ? '#9CA3AF' : '#6B7280' } },
+        }
+    };
+
+    if (records.length < 2) return null;
+
+    if (trackableMetrics.length === 0) {
+        return (
+            <div className="p-4 text-center bg-gray-100 dark:bg-gray-800 rounded-lg text-sm text-gray-500 dark:text-gray-400">
+                {t('dashboardChartNoMetrics')}
+            </div>
+        );
+    }
+    
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                 <h3 className="font-bold text-gray-800 dark:text-gray-100">{t('dashboardChartTitle')}</h3>
+                 <div>
+                    <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">{t('dashboardChartMultiSelectTitle')}</h4>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                        {trackableMetrics.map(metric => (
+                            <label key={metric} className="flex items-center space-x-2 text-sm cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedMetrics.includes(metric)}
+                                    onChange={() => handleMetricToggle(metric)}
+                                    className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                />
+                                <span className="text-gray-700 dark:text-gray-200">{metric}</span>
+                            </label>
+                        ))}
+                    </div>
+                 </div>
+             </div>
+             <div className="h-72">
+                {selectedMetrics.length > 0 ? (
+                    <Line options={chartOptions} data={chartData} />
+                ) : (
+                    <div className="flex items-center justify-center h-full text-sm text-gray-500 dark:text-gray-400">
+                        {t('dashboardChartSelectMetric')}
+                    </div>
+                )}
+             </div>
+        </div>
     );
 };
 
@@ -147,7 +331,9 @@ const Dashboard: React.FC = () => {
           );
       }
       return (
-          <div className="space-y-4">
+          <div className="space-y-6">
+              <SummaryCards latestRecord={records[0]} t={t} />
+              <HealthTrendChart records={records} t={t} />
               {records.map(record => (
                   <HealthRecordCard key={record.id} record={record} onDelete={handleDelete} t={t} />
               ))}
@@ -157,7 +343,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900">
-      <div className="w-full max-w-3xl mx-auto">
+      <div className="w-full max-w-4xl mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{t('dashboardTitle')}</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">{t('dashboardSubtitle')}</p>
