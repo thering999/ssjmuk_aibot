@@ -1,25 +1,13 @@
 import { ai } from "./geminiService";
 import type { HealthHubArticle } from '../types';
+import { GenerateContentResponse } from "@google/genai";
 
 /**
  * Safely extracts text from a Gemini API response object.
- * This avoids console warnings about non-text parts (e.g., thoughtSignature)
- * by manually concatenating only the text parts from the response candidates.
- * @param response The GenerateContentResponse or a stream chunk.
- * @returns The extracted text as a single string.
  */
-function extractText(response: any): string {
-    if (!response?.candidates || response.candidates.length === 0) {
-        return '';
-    }
-    const candidate = response.candidates[0];
-    if (!candidate?.content || !candidate.content.parts) {
-        return '';
-    }
-    return candidate.content.parts
-        .map((part: any) => part.text)
-        .filter((text: string | undefined) => text !== undefined)
-        .join('');
+function extractText(response: GenerateContentResponse): string {
+    // @google/genai-fix: Use the `.text` property for direct text access.
+    return response.text;
 }
 
 
@@ -43,7 +31,6 @@ Your response MUST be a single JSON object wrapped in a markdown code block (e.g
         
         let jsonText = extractText(response).trim();
 
-        // The model might return markdown ```json ... ```. Strip it.
         const jsonMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) {
             jsonText = jsonMatch[1];
@@ -52,7 +39,6 @@ Your response MUST be a single JSON object wrapped in a markdown code block (e.g
         const result = JSON.parse(jsonText);
 
         if (result && Array.isArray(result.articles)) {
-            // Validate that the category is one of the expected types
             return result.articles.map((article: any) => ({
                 ...article,
                 category: ['Alert', 'Campaign', 'News', 'Tip'].includes(article.category) ? article.category : 'News',

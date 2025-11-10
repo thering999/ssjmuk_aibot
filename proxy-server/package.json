@@ -1,0 +1,15 @@
+{
+  "name": "health-app-proxy",
+  "version": "1.0.0",
+  "description": "Secure proxy for Gemini API calls",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.29.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2"
+  }
+}

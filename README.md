@@ -1,20 +1,21 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Public Health AI Assistant
 
-# Run and deploy your AI Studio app
+This is a web-based AI chatbot designed to answer health-related questions and provide general information about Mukdahan province, powered by Google's Gemini API.
 
-This contains everything you need to run your app locally.
+## Project Setup
 
-View your app in AI Studio: https://ai.studio/apps/drive/1cy5TNt9seopbdgwCoGl6lIvuKtRJimcW
+1.  **Install Dependencies**:
+    ```bash
+    npm install
+    ```
 
-## Run Locally
+2.  **Set up Firebase (Optional)**:
+    If you want to use user authentication, chat history, and other backend features, you need to configure your own Firebase project in `services/firebase.ts`. The app will guide you if the configuration is missing.
 
-**Prerequisites:**  Node.js
+## Local Development
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+To run the app locally:
+```bash
+npm run dev
+```
+This will start a development server, typically on `http://localhost:5173`.

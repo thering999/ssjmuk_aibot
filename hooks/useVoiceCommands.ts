@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { interpretVoiceCommand } from '../services/chatService';
-// @google/genai-fix: Import TFunction to correctly type the translation function, matching the expected type in `interpretVoiceCommand`.
 import type { TFunction } from 'i18next';
 
 // Define a minimal interface for SpeechRecognition to satisfy TypeScript

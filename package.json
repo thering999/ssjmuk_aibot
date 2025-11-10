@@ -1,36 +1,37 @@
 {
-  "name": "สสจ.มุกดาหาร-ai-chatbot",
+  "name": "health-ai-assistant",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.29.0",
+    "chart.js": "^4.5.1",
+    "date-fns": "^4.1.0",
+    "firebase": "10.12.2",
+    "i18next": "^25.6.1",
+    "mammoth": "^1.11.0",
+    "pdfjs-dist": "4.4.168",
     "react": "^19.2.0",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.0",
-    "@google/genai": "^1.27.0",
-    "react-markdown": "9",
-    "remark-gfm": "4",
-    "nanoid": "^5.1.6",
-    "marked": "^16.4.1",
-    "react-syntax-highlighter": "^16.1.0",
-    "uuid": "^13.0.0",
-    "firebase": "^12.5.0",
     "react-i18next": "^16.2.4",
-    "i18next": "^25.6.0",
-    "mammoth": "1.8.0",
-    "pdfjs-dist": "^5.4.394",
-    "chart.js": "4.4.3",
-    "react-chartjs-2": "5.2.0",
-    "date-fns": "3.6.0"
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^16.1.0",
+    "remark-gfm": "^4.0.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/uuid": "^9.0.8",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.3.1"
   }
 }

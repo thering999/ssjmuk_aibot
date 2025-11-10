@@ -5,7 +5,7 @@ import ModelSelector from './ModelSelector';
 import { useTranslation } from '../hooks/useTranslation';
 
 // Base64 encoded logo for Mukdahan Provincial Public Health Office
-const logoSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAMAAAAJixw1AAABAlBMVEX////9/f38/Pz+/v75+fnx8fHy8vL09PT39/f6+vrz8/P19fX4+Pj7+/v////u7u7q6urm5ubk5OTe3t7Z2dnT09PPz8+7u7vDw8O/v7+pqamfn5+BgYF6enp0dHRsbGxlZWVdXV1SUlJOTk5GRkZCQkI+Pj45OTkxMTElJSV/f395eXlxcXFmZmZVVVVLSkpFRUVDQ0M/Pz83Nzc0NDQsLCwmJiYfHx8aGhoXFxcSEhIMDAwICAgGBgYFBQUCAgIAAADy8vLw8PDm5ubg4ODX19fS0tLLy8vJycnExMS3t7eurq6jo6N+fn5tbW1dXV1SUlJLS0tEREQ8PDwyMjIhISEWFhYODg4KCgoGBgYBAQHuKwVSAAASYklEQVR4nO2d6XuyOhfG5ZqGmoZC9y7t7u7u7u7u7u7u7u7ubr/3S7e7u/v/P3zJgCRtQpI0QZL8fr53IMmQfD5583NeFEVRFCVfQ5p/bfr56dOnS5eS7u5fL7w6uX2+dLl293fL9/f7+/v7e/v7+1p/b//Lq6tXr16+vPr2+eLly6tXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1avvL1/+8+v/8v+7//L/8s9/8Pvv+fL/y1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1f/2vW3z342D0+fPp3+m9OfP39+/vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz-c-o8K1C9L/9k8fP306/WfS8+dPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz-h5z4D8n74t8///8F0aT8KxXjV7cAAAAAElFTSuQmCC";
+const logoSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAMAAAAJixw1AAABAlBMVEX////9/f38/Pz+/v75+fnx8fHy8vL09PT39/f6+vrz8/P19fX4+Pj7+/v////u7u7q6urm5ubk5OTe3t7Z2dnT09PPz8+7u7vDw8O/v7+pqamfn5+BgYF6enp0dHRsbGxlZWVdXV1SUlJOTk5GRkZCQkI+Pj45OTkxMTElJSV/f395eXlxcXFmZmZVVVVLSkpFRUVDQ0M/Pz83Nzc0NDQsLCwmJiYfHx8aGhoXFxcSEhIMDAwICAgGBgYFBQUCAgIAAADy8vLw8PDm5ubg4ODX19fS0tLLy8vJycnExMS3t7eurq6jo6N+fn5tbW1dXV1SUlJLS0tEREQ8PDwyMjIhISEWFhYODg4KCgoGBgYBAQHuKwVSAAASYklEQVR4nO2d6XuyOhfG5ZqGmoZC9y7t7u7u7u7u7u7u7u7ubr/3S7e7u/v/P3zJgCRtQpI0QZL8fr53IMmQfD5583NeFEVRFCVfQ5p/bfr56dOnS5eS7u5fL7w6uX2+dLl293fL9/f7+/v7e/v7+1p/b//Lq6tXr16+vPr2+eLly6tXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1avvL1/+8+v/8v+7//L/8s9/8Pvv+fL/y1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1f/2vW3z342D0+fPp3+m9OfP39+/vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz-c-o8K1C9L/9k8fP306/WfS8+dPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz-h5z4D8n74t8///8F0aT8KxXjV7cAAAAAElFTSuQmCC";
 
 interface HeaderProps {
   sidebarIsOpen: boolean;
@@ -25,6 +25,10 @@ interface HeaderProps {
   setUseClinicFinder: (enabled: boolean) => void;
   useKnowledgeBase: boolean;
   setUseKnowledgeBase: (enabled: boolean) => void;
+  useSymptomChecker: boolean;
+  setUseSymptomChecker: (enabled: boolean) => void;
+  useMedicationReminder: boolean;
+  setUseMedicationReminder: (enabled: boolean) => void;
   locationError: string | null;
   setMode: (mode: AppMode) => void;
   currentMode: AppMode;
@@ -53,6 +57,8 @@ const Header: React.FC<HeaderProps> = ({
   useMaps, setUseMaps,
   useClinicFinder, setUseClinicFinder,
   useKnowledgeBase, setUseKnowledgeBase,
+  useSymptomChecker, setUseSymptomChecker,
+  useMedicationReminder, setUseMedicationReminder,
   locationError,
   setMode,
   currentMode,
@@ -106,6 +112,12 @@ const Header: React.FC<HeaderProps> = ({
               {t('chat')}
             </button>
             <button
+              onClick={() => setMode('map')}
+              className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${currentMode === 'map' ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 shadow' : 'text-gray-600 dark:text-gray-300'}`}
+            >
+              {t('map')}
+            </button>
+            <button
               onClick={() => setMode('hub')}
               className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${currentMode === 'hub' ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 shadow' : 'text-gray-600 dark:text-gray-300'}`}
             >
@@ -137,6 +149,8 @@ const Header: React.FC<HeaderProps> = ({
           useMaps={useMaps} setUseMaps={setUseMaps}
           useClinicFinder={useClinicFinder} setUseClinicFinder={setUseClinicFinder}
           useKnowledgeBase={useKnowledgeBase} setUseKnowledgeBase={setUseKnowledgeBase}
+          useSymptomChecker={useSymptomChecker} setUseSymptomChecker={setUseSymptomChecker}
+          useMedicationReminder={useMedicationReminder} setUseMedicationReminder={setUseMedicationReminder}
           locationError={locationError}
         />
         

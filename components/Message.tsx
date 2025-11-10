@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import type { ChatMessage, ChatMessageSource, AttachedFile, ClinicInfo } from '../types';
+import type { ChatMessage, ChatMessageSource, AttachedFile, ClinicInfo, SymptomCheckResult } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
 import LoadingIndicator from './LoadingIndicator';
 
@@ -85,6 +85,25 @@ const FollowUpQuestions: React.FC<{ questions: string[], onSend: (q: string) => 
     );
 };
 
+const SymptomCheckResultCard: React.FC<{ data: SymptomCheckResult }> = ({ data }) => {
+    return (
+        <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 not-prose bg-gray-50 dark:bg-gray-700/50 my-2 text-sm space-y-3">
+            <div>
+                <h4 className="font-semibold text-gray-800 dark:text-gray-100">Possible Causes</h4>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{data.possibleCauses}</p>
+            </div>
+            <div>
+                <h4 className="font-semibold text-gray-800 dark:text-gray-100">Recommendations</h4>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{data.recommendations}</p>
+            </div>
+            <div className="p-2 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-r-md">
+                 <h4 className="font-semibold text-orange-800 dark:text-orange-200 text-xs">Important Disclaimer</h4>
+                 <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">{data.disclaimer}</p>
+            </div>
+        </div>
+    );
+};
+
 const ClinicInfoCard: React.FC<{ info: ClinicInfo, onSendFollowUp: (q: string) => void }> = ({ info, onSendFollowUp }) => {
     const [showMap, setShowMap] = useState(false);
 
@@ -142,6 +161,16 @@ const ToolUseDisplay: React.FC<{ toolUse: ChatMessage['toolUse'], onSendFollowUp
     const { t } = useTranslation();
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     if (!toolUse) return null;
+
+    // Custom renderer for Symptom Checker tool
+    if (toolUse.name === 'checkSymptoms' && toolUse.result && !toolUse.isCalling) {
+        try {
+            const symptomData = JSON.parse(toolUse.result);
+            return <SymptomCheckResultCard data={symptomData} />;
+        } catch (e) {
+            // Fallback to raw display if parsing fails
+        }
+    }
 
     // Custom renderer for Clinic Finder tool
     if (toolUse.name === 'getClinicInfo' && toolUse.result && !toolUse.isCalling) {
@@ -242,7 +271,7 @@ const Message: React.FC<MessageProps> = ({ message, onRetry, onSendFollowUp }) =
   const messageContainerClasses = `flex items-start max-w-lg lg:max-w-xl ${isUser ? 'flex-row-reverse' : ''}`;
 
   return (
-    <div className={containerClasses}>
+    <div className={`${containerClasses} fade-in`}>
       <div className={messageContainerClasses}>
         {!isUser && <BotAvatar />}
         

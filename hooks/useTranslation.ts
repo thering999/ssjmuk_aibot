@@ -13,8 +13,8 @@ const translationsEn = {
     "welcomeUploadSupported": "Supported formats: Images, Videos, and documents (.pdf, .docx, .txt, etc.)",
     "suggestedQuestions": [
       "What are the symptoms of dengue fever?",
-      "Where is the nearest clinic to me?",
-      "Tell me about the PM2.5 situation in Mukdahan.",
+      "I have a headache and a fever, what could it be?",
+      "Set a reminder to take medicine tomorrow at 8 AM.",
       "How do I apply for a health certificate?",
       "Can you analyze a health report for me?",
       "Estimate the calories from a photo of my meal"
@@ -78,6 +78,7 @@ const translationsEn = {
     "analyzer": "Analyzer",
     "hub": "Hub",
     "dashboard": "Dashboard",
+    "map": "Map",
     "tooltipPersona": "Set Persona / System Instruction",
     "tooltipExport": "Export Conversation",
     "tooltipTtsOn": "Text-to-Speech is ON",
@@ -121,6 +122,10 @@ const translationsEn = {
     "tooltipLocation": "Provide location for relevant results (e.g., Maps).",
     "useClinic": "Clinic Finder",
     "tooltipClinic": "Allow the AI to find local health clinics.",
+    "useSymptomChecker": "Symptom Checker",
+    "tooltipSymptomChecker": "Allow the AI to analyze symptoms and provide general advice (not a diagnosis).",
+    "useMedicationReminder": "Medication Reminder",
+    "tooltipMedicationReminder": "Allow the AI to set medication reminders using browser notifications.",
     "personaModalTitle": "Set Custom Instructions",
     "personaModalBody": "Provide custom instructions for the AI to follow in its responses. This will apply to the current conversation.",
     "personaModalPlaceholder": "e.g., 'You are a friendly assistant who explains medical terms in simple language.'",
@@ -218,7 +223,15 @@ const translationsEn = {
     "dashboardChartNoMetrics": "No trackable metrics found in your saved reports.",
     "dashboardSummaryTitle": "Latest Health Vitals",
     "dashboardSummarySubtitle": "From your report on {{date}}",
-    "dashboardNoVitals": "No key metrics found in your latest report to summarize."
+    "dashboardNoVitals": "No key metrics found in your latest report to summarize.",
+    "mapTitle": "Community Health Map",
+    "mapSubtitle": "Find health services and information in your area.",
+    "mapSearchPlaceholder": "Search for clinics, hospitals, or health alerts...",
+    "mapSearchButton": "Search",
+    "mapViewOnMap": "View on Map",
+    "mapNoResults": "No results found for your query.",
+    "mapError": "An error occurred while searching. Please try again.",
+    "mapInitialMessage": "Use the search bar above to find health-related places and information near you."
   }
 };
 
@@ -230,8 +243,8 @@ const translationsTh = {
     "welcomeUploadSupported": "ไฟล์ที่รองรับ: รูปภาพ, วิดีโอ, และเอกสาร (.pdf, .docx, .txt, etc.)",
     "suggestedQuestions": [
       "อาการของไข้เลือดออกมีอะไรบ้าง?",
-      "คลินิกที่ใกล้ที่สุดอยู่ที่ไหน?",
-      "สถานการณ์ฝุ่น PM2.5 ในมุกดาหารเป็นอย่างไร?",
+      "ฉันปวดหัวและมีไข้ ควรทำอย่างไร?",
+      "ช่วยตั้งเตือนกินยาพรุ่งนี้ 8 โมงเช้าหน่อย",
       "ฉันจะขอใบรับรองแพทย์ได้อย่างไร?",
       "ช่วยวิเคราะห์ผลตรวจสุขภาพให้หน่อยได้ไหม?",
       "ประเมินแคลอรี่จากรูปอาหารมื้อนี้ได้ไหม?"
@@ -293,6 +306,7 @@ const translationsTh = {
     "analyzer": "วิเคราะห์ผล",
     "hub": "ศูนย์ข้อมูล",
     "dashboard": "แดชบอร์ด",
+    "map": "แผนที่",
     "tooltipPersona": "ตั้งค่า Persona / คำสั่งระบบ",
     "tooltipExport": "ส่งออกการสนทนา",
     "tooltipTtsOn": "เปิดการอ่านออกเสียง",
@@ -336,6 +350,10 @@ const translationsTh = {
     "tooltipLocation": "ให้ข้อมูลตำแหน่งเพื่อผลลัพธ์ที่เกี่ยวข้อง (เช่น แผนที่)",
     "useClinic": "ค้นหาคลินิก",
     "tooltipClinic": "อนุญาตให้ AI ค้นหาสถานพยาบาลในพื้นที่",
+    "useSymptomChecker": "เครื่องมือตรวจสอบอาการ",
+    "tooltipSymptomChecker": "อนุญาตให้ AI วิเคราะห์อาการและให้คำแนะนำทั่วไป (ไม่ใช่การวินิจฉัย)",
+    "useMedicationReminder": "แจ้งเตือนการทานยา",
+    "tooltipMedicationReminder": "อนุญาตให้ AI ตั้งค่าการแจ้งเตือนการทานยาผ่านเบราว์เซอร์",
     "personaModalTitle": "ตั้งค่าคำสั่งที่กำหนดเอง",
     "personaModalBody": "ระบุคำสั่งเพื่อให้ AI ปฏิบัติตามในการตอบสนอง ซึ่งจะใช้กับการสนทนาปัจจุบัน",
     "personaModalPlaceholder": "เช่น 'คุณคือผู้ช่วยที่เป็นมิตรซึ่งอธิบายศัพท์ทางการแพทย์ด้วยภาษาง่ายๆ'",
@@ -429,7 +447,15 @@ const translationsTh = {
     "dashboardChartNoMetrics": "ไม่พบข้อมูลที่สามารถติดตามได้ในรายงานที่บันทึกไว้",
     "dashboardSummaryTitle": "ข้อมูลสุขภาพล่าสุด",
     "dashboardSummarySubtitle": "จากรายงานของคุณเมื่อวันที่ {{date}}",
-    "dashboardNoVitals": "ไม่พบข้อมูลสำคัญในรายงานล่าสุดของคุณเพื่อสรุปผล"
+    "dashboardNoVitals": "ไม่พบข้อมูลสำคัญในรายงานล่าสุดของคุณเพื่อสรุปผล",
+    "mapTitle": "แผนที่สุขภาพชุมชน",
+    "mapSubtitle": "ค้นหาบริการและข้อมูลสุขภาพในพื้นที่ของคุณ",
+    "mapSearchPlaceholder": "ค้นหาคลินิก, โรงพยาบาล, หรือประกาศเตือนภัย...",
+    "mapSearchButton": "ค้นหา",
+    "mapViewOnMap": "ดูบนแผนที่",
+    "mapNoResults": "ไม่พบผลลัพธ์สำหรับคำค้นหาของคุณ",
+    "mapError": "เกิดข้อผิดพลาดระหว่างการค้นหา กรุณาลองอีกครั้ง",
+    "mapInitialMessage": "ใช้ช่องค้นหาด้านบนเพื่อค้นหาสถานที่และข้อมูลที่เกี่ยวกับสุขภาพใกล้คุณ"
   }
 };
 

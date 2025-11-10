@@ -76,6 +76,12 @@ export interface ClinicInfo {
   phone: string;
 }
 
+export interface SymptomCheckResult {
+  possibleCauses: string;
+  recommendations: string;
+  disclaimer: string;
+}
+
 export interface KnowledgeDocument {
     id: string;
     name: string;
@@ -113,4 +119,9 @@ export interface HealthRecord {
     title: string;
     analysis: HealthReportAnalysis;
     createdAt: number;
+}
+
+export interface MapSearchResult {
+  summary: string;
+  places: ChatMessageSource[];
 }

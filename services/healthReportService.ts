@@ -4,36 +4,18 @@ import type { AttachedFile, HealthReportAnalysis } from '../types';
 
 /**
  * Safely extracts text from a Gemini API response object.
- * This avoids console warnings about non-text parts (e.g., thoughtSignature)
- * by manually concatenating only the text parts from the response candidates.
- * @param response The GenerateContentResponse or a stream chunk.
- * @returns The extracted text as a single string.
  */
-function extractText(response: any): string {
-    if (!response?.candidates || response.candidates.length === 0) {
-        return '';
-    }
-    const candidate = response.candidates[0];
-    if (!candidate?.content || !candidate.content.parts) {
-        return '';
-    }
-    return candidate.content.parts
-        .map((part: any) => part.text)
-        .filter((text: string | undefined) => text !== undefined)
-        .join('');
+function extractText(response: GenerateContentResponse): string {
+    // @google/genai-fix: Use the `.text` property for direct text access.
+    return response.text;
 }
-
 
 const responseSchema = {
     type: Type.OBJECT,
     properties: {
-        summary: {
-            type: Type.STRING,
-            description: "A brief, one or two-sentence overall summary of the lab results. Mention if results are generally normal or if there are notable findings."
-        },
+        summary: { type: Type.STRING, description: "A brief, one or two-sentence overall summary of the lab results. Mention if results are generally normal or if there are notable findings." },
         keyFindings: {
-            type: Type.ARRAY,
-            description: "An array of only the metrics that are outside the normal range (High or Low). If all are normal, this array should be empty.",
+            type: Type.ARRAY, description: "An array of only the metrics that are outside the normal range (High or Low). If all are normal, this array should be empty.",
             items: {
                 type: Type.OBJECT,
                 properties: {
@@ -47,8 +29,7 @@ const responseSchema = {
             }
         },
         detailedResults: {
-            type: Type.ARRAY,
-            description: "A comprehensive array of all metrics identified in the report, including those within the normal range.",
+            type: Type.ARRAY, description: "A comprehensive array of all metrics identified in the report, including those within the normal range.",
             items: {
                 type: Type.OBJECT,
                 properties: {
@@ -84,33 +65,28 @@ IMPORTANT: You are not a medical professional. Do NOT provide any diagnosis, med
                 systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema: responseSchema,
-                temperature: 0.2, // Lower temperature for more factual, less creative output
+                temperature: 0.2,
                 thinkingConfig: { thinkingBudget: 24576 }
             }
         });
 
         let jsonText = extractText(response).trim();
         
-        // The model might return markdown ```json ... ```. Strip it.
         const jsonMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) {
             jsonText = jsonMatch[1];
         }
 
-        if (!jsonText) {
-            throw new Error("AI returned an empty analysis.");
-        }
+        if (!jsonText) throw new Error("AI returned an empty analysis.");
 
         const parsedResult = JSON.parse(jsonText);
         
-        // Defensive validation to ensure arrays exist, preventing runtime errors in the UI.
         const result: HealthReportAnalysis = {
             summary: parsedResult.summary || "No summary provided.",
             keyFindings: Array.isArray(parsedResult.keyFindings) ? parsedResult.keyFindings : [],
             detailedResults: Array.isArray(parsedResult.detailedResults) ? parsedResult.detailedResults : [],
         };
         
-        // Prepend the disclaimer to the summary if the model forgets
         const disclaimer = "Disclaimer: This is an AI-generated summary for informational purposes only and is not medical advice. Please consult a healthcare professional.";
         if (!result.summary.toLowerCase().includes("disclaimer")) {
             result.summary = `${disclaimer} ${result.summary}`;
@@ -123,7 +99,6 @@ IMPORTANT: You are not a medical professional. Do NOT provide any diagnosis, med
         if (error instanceof SyntaxError) {
              throw new Error("Failed to analyze the health report. The AI returned invalid JSON.");
         }
-        // Re-throw to be handled by the UI component
         throw new Error("Failed to analyze the health report. The AI model could not process the request.");
     }
 };

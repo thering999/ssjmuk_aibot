@@ -1,6 +1,6 @@
 import { Operation } from "@google/genai";
 import type { AttachedFile } from "../types";
-import { getAiClient } from "./geminiService";
+import { ai } from "./geminiService";
 
 export class ApiKeyNotSelectedError extends Error {
   constructor(message?: string) {
@@ -15,12 +15,7 @@ export const generateVideo = async (
     aspectRatio: '16:9' | '9:16',
     onProgress: (status: string) => void
 ): Promise<string> => {
-    // The explicit API key check has been removed as per user request.
-    // The application now assumes a valid key is present in the environment.
     
-    // Create a new instance right before the call to get the latest key
-    const ai = getAiClient();
-
     onProgress("Starting video generation...");
     let operation: Operation<any>;
     try {
@@ -35,8 +30,9 @@ export const generateVideo = async (
           }
       });
     } catch(err: any) {
-        // The specific check for API key errors has been removed.
-        // The original error will now be thrown to be handled generically.
+        if (err.message && err.message.includes("API key not valid")) {
+            throw new ApiKeyNotSelectedError();
+        }
         throw err;
     }
 
@@ -57,7 +53,14 @@ export const generateVideo = async (
     }
 
     onProgress("Fetching generated video...");
-    const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+    
+    // @google/genai-fix: Per guidelines, the API key must be obtained from `process.env.API_KEY` and appended to the download URI.
+    const API_KEY = process.env.API_KEY;
+    if (!API_KEY) {
+        throw new Error("API Key is not available for video download.");
+    }
+
+    const response = await fetch(`${downloadLink}&key=${API_KEY}`);
     if (!response.ok) {
         throw new Error(`Failed to fetch video: ${response.statusText}`);
     }

@@ -6,8 +6,8 @@
     "welcomeUploadSupported": "Supported formats: Images, Videos, and documents (.pdf, .docx, .txt, etc.)",
     "suggestedQuestions": [
       "What are the symptoms of dengue fever?",
-      "Where is the nearest clinic to me?",
-      "Tell me about the PM2.5 situation in Mukdahan.",
+      "I have a headache and a fever, what could it be?",
+      "Set a reminder to take medicine tomorrow at 8 AM.",
       "How do I apply for a health certificate?",
       "Can you analyze a health report for me?",
       "Estimate the calories from a photo of my meal"
@@ -71,6 +71,7 @@
     "analyzer": "Analyzer",
     "hub": "Hub",
     "dashboard": "Dashboard",
+    "map": "Map",
     "tooltipPersona": "Set Persona / System Instruction",
     "tooltipExport": "Export Conversation",
     "tooltipTtsOn": "Text-to-Speech is ON",
@@ -114,6 +115,10 @@
     "tooltipLocation": "Provide location for relevant results (e.g., Maps).",
     "useClinic": "Clinic Finder",
     "tooltipClinic": "Allow the AI to find local health clinics.",
+    "useSymptomChecker": "Symptom Checker",
+    "tooltipSymptomChecker": "Allow the AI to analyze symptoms and provide general advice (not a diagnosis).",
+    "useMedicationReminder": "Medication Reminder",
+    "tooltipMedicationReminder": "Allow the AI to set medication reminders using browser notifications.",
     "personaModalTitle": "Set Custom Instructions",
     "personaModalBody": "Provide custom instructions for the AI to follow in its responses. This will apply to the current conversation.",
     "personaModalPlaceholder": "e.g., 'You are a friendly assistant who explains medical terms in simple language.'",
@@ -211,6 +216,14 @@
     "dashboardChartNoMetrics": "No trackable metrics found in your saved reports.",
     "dashboardSummaryTitle": "Latest Health Vitals",
     "dashboardSummarySubtitle": "From your report on {{date}}",
-    "dashboardNoVitals": "No key metrics found in your latest report to summarize."
+    "dashboardNoVitals": "No key metrics found in your latest report to summarize.",
+    "mapTitle": "Community Health Map",
+    "mapSubtitle": "Find health services and information in your area.",
+    "mapSearchPlaceholder": "Search for clinics, hospitals, or health alerts...",
+    "mapSearchButton": "Search",
+    "mapViewOnMap": "View on Map",
+    "mapNoResults": "No results found for your query.",
+    "mapError": "An error occurred while searching. Please try again.",
+    "mapInitialMessage": "Use the search bar above to find health-related places and information near you."
   }
 }

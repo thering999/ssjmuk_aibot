@@ -13,11 +13,15 @@ interface ModelSelectorProps {
   setUseClinicFinder: (enabled: boolean) => void;
   useKnowledgeBase: boolean;
   setUseKnowledgeBase: (enabled: boolean) => void;
+  useSymptomChecker: boolean;
+  setUseSymptomChecker: (enabled: boolean) => void;
+  useMedicationReminder: boolean;
+  setUseMedicationReminder: (enabled: boolean) => void;
   locationError: string | null;
 }
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({
-  model, setModel, useSearch, setUseSearch, useMaps, setUseMaps, useClinicFinder, setUseClinicFinder, useKnowledgeBase, setUseKnowledgeBase, locationError
+  model, setModel, useSearch, setUseSearch, useMaps, setUseMaps, useClinicFinder, setUseClinicFinder, useKnowledgeBase, setUseKnowledgeBase, useSymptomChecker, setUseSymptomChecker, useMedicationReminder, setUseMedicationReminder, locationError
 }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -84,6 +88,20 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                      >
                         <input type="checkbox" checked={useKnowledgeBase} onChange={(e) => setUseKnowledgeBase(e.target.checked)} className="accent-teal-600" />
                         <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{t('useKnowledgeBase')}</span>
+                    </label>
+                    <label
+                       className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                       title={t('tooltipSymptomChecker')}
+                     >
+                        <input type="checkbox" checked={useSymptomChecker} onChange={(e) => setUseSymptomChecker(e.target.checked)} className="accent-teal-600" />
+                        <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{t('useSymptomChecker')}</span>
+                    </label>
+                    <label
+                       className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                       title={t('tooltipMedicationReminder')}
+                     >
+                        <input type="checkbox" checked={useMedicationReminder} onChange={(e) => setUseMedicationReminder(e.target.checked)} className="accent-teal-600" />
+                        <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{t('useMedicationReminder')}</span>
                     </label>
                     <label
                       className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"

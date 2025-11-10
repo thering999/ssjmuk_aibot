@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import type { AttachedFile, ModelType, Geolocation, Conversation, EmergencyResult, LiveConversationHandle } from './types';
 import { useTheme } from './hooks/useTheme';
 import { useChat } from './hooks/useChat';
@@ -13,11 +13,6 @@ import { ApiKeyNotSelectedError } from './services/videoService';
 import { findNearestEmergencyRoom } from './services/emergencyService';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
-import ChatInterface from './components/ChatInterface';
-import LiveConversation from './components/LiveConversation';
-import HealthReportAnalyzer from './components/HealthReportAnalyzer';
-import HealthHub from './components/HealthHub';
-import Dashboard from './components/Dashboard';
 import PersonaModal from './components/PersonaModal';
 import ApiKeyNoticeModal from './components/ApiKeyNoticeModal';
 import ConfirmationModal from './components/ConfirmationModal';
@@ -27,7 +22,16 @@ import ShareModal from './components/ShareModal';
 import SharedConversationView from './components/SharedConversationView';
 import LoadingIndicator from './components/LoadingIndicator';
 
-export type AppMode = 'chat' | 'live' | 'analyzer' | 'hub' | 'dashboard';
+// Lazy load components for each mode
+const ChatInterface = React.lazy(() => import('./components/ChatInterface'));
+const LiveConversation = React.lazy(() => import('./components/LiveConversation'));
+const HealthReportAnalyzer = React.lazy(() => import('./components/HealthReportAnalyzer'));
+const HealthHub = React.lazy(() => import('./components/HealthHub'));
+const Dashboard = React.lazy(() => import('./components/Dashboard'));
+const CommunityHealthMap = React.lazy(() => import('./components/CommunityHealthMap'));
+
+
+export type AppMode = 'chat' | 'live' | 'analyzer' | 'hub' | 'dashboard' | 'map';
 
 const App: React.FC = () => {
   const { t, language, setLanguage } = useTranslation();
@@ -41,6 +45,8 @@ const App: React.FC = () => {
   const [useMaps, setUseMaps] = usePersistentState('useMaps', false);
   const [useClinicFinder, setUseClinicFinder] = usePersistentState('useClinicFinder', true);
   const [useKnowledgeBase, setUseKnowledgeBase] = usePersistentState('useKnowledgeBase', true);
+  const [useSymptomChecker, setUseSymptomChecker] = usePersistentState('useSymptomChecker', true);
+  const [useMedicationReminder, setUseMedicationReminder] = usePersistentState('useMedicationReminder', true);
   
   // App state
   const [isTtsEnabled, setIsTtsEnabled] = usePersistentState('isTtsEnabled', false);
@@ -81,10 +87,11 @@ const App: React.FC = () => {
     selectConversation,
     updateSystemInstruction,
     isFetching,
-  } = useChat(model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, user, t);
+  } = useChat(model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, user, t);
 
    useEffect(() => {
-    if (useMaps && !location && !locationError) {
+    // This effect now serves both the 'useMaps' toggle in chat and the 'map' mode.
+    if ((useMaps || currentMode === 'map') && !location && !locationError) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setLocation({
@@ -95,12 +102,15 @@ const App: React.FC = () => {
         },
         (error) => {
           console.error("Geolocation error:", error);
-          setLocationError(t('locationError'));
-          setUseMaps(false);
+          const errorMessage = t('locationError');
+          setLocationError(errorMessage);
+          // If the error occurs while in map mode, it will be displayed there.
+          // If it occurs from the settings toggle, disable it.
+          if (useMaps) setUseMaps(false);
         }
       );
     }
-  }, [useMaps, location, locationError, setUseMaps, t]);
+  }, [useMaps, currentMode, location, locationError, setUseMaps, t]);
 
   const showToast = useCallback((message: string) => {
     setToastMessage(message);
@@ -320,6 +330,8 @@ const App: React.FC = () => {
         return <HealthHub />;
       case 'dashboard':
         return <Dashboard />;
+      case 'map':
+        return <CommunityHealthMap userLocation={location} locationError={locationError} />;
       default:
         return null;
     }
@@ -355,6 +367,8 @@ const App: React.FC = () => {
           useMaps={useMaps} setUseMaps={setUseMaps}
           useClinicFinder={useClinicFinder} setUseClinicFinder={setUseClinicFinder}
           useKnowledgeBase={useKnowledgeBase} setUseKnowledgeBase={setUseKnowledgeBase}
+          useSymptomChecker={useSymptomChecker} setUseSymptomChecker={setUseSymptomChecker}
+          useMedicationReminder={useMedicationReminder} setUseMedicationReminder={setUseMedicationReminder}
           locationError={locationError}
           setMode={setCurrentMode}
           currentMode={currentMode}
@@ -370,7 +384,9 @@ const App: React.FC = () => {
           onSosClick={handleSosClick}
         />
 
-        {renderCurrentMode()}
+        <Suspense fallback={<div className="flex-1 flex items-center justify-center"><LoadingIndicator className="h-8 w-8 text-teal-600" /></div>}>
+            {renderCurrentMode()}
+        </Suspense>
       </main>
       
       <PersonaModal

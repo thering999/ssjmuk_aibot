@@ -5,6 +5,7 @@ import 'firebase/compat/firestore';
 import 'firebase/compat/storage';
 
 import type { Conversation, KnowledgeDocument } from '../types';
+import { chunkText, createEmbedding } from './embeddingService';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -37,6 +38,14 @@ export type User = firebase.User;
 
 // --- Services ---
 const auth = app ? firebase.auth() : undefined;
+if (auth) {
+  // Explicitly set persistence to 'local' (localStorage) to avoid environment issues.
+  // This helps signInWithPopup work correctly in restricted environments like iframes.
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .catch((error) => {
+      console.error("Firebase: Could not set auth persistence.", error);
+    });
+}
 export const db = app ? firebase.firestore() : undefined;
 const storage = app ? firebase.storage() : undefined;
 const provider = app ? new firebase.auth.GoogleAuthProvider() : undefined;
@@ -162,36 +171,84 @@ export const getKnowledgeDocuments = async (uid: string): Promise<KnowledgeDocum
     });
 };
 
-export const uploadKnowledgeDocument = async (uid: string, file: File): Promise<void> => {
-    if (!storage || !db) throw new Error("Firebase not configured.");
-    const docId = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`; // Sanitize name
-    const storageRef = storage.ref(`knowledge/${uid}/${docId}`);
+export const uploadKnowledgeDocument = async (uid: string, docId: string, textContent: string): Promise<void> => {
+    if (!db) throw new Error("Firebase not configured.");
     
-    await storageRef.put(file);
+    // 1. Chunk the text content
+    const chunks = chunkText(textContent);
     
-    await getKnowledgeCollection(uid).doc(docId).set({
-        name: file.name,
-        size: file.size,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    // 2. Create an embedding for each chunk
+    const chunkPromises = chunks.map(async (text, index) => {
+        const embedding = await createEmbedding(text);
+        return { text, embedding, chunkIndex: index };
     });
+    
+    const chunksWithEmbeddings = await Promise.all(chunkPromises);
+    
+    // 3. Save chunks and their embeddings to a subcollection in Firestore
+    const knowledgeDocRef = getKnowledgeCollection(uid).doc(docId);
+    const chunksCollectionRef = knowledgeDocRef.collection('chunks');
+    
+    const batch = db.batch();
+    chunksWithEmbeddings.forEach((chunkData, index) => {
+        const chunkDocRef = chunksCollectionRef.doc(String(index));
+        batch.set(chunkDocRef, {
+            text: chunkData.text,
+            embedding: chunkData.embedding,
+        });
+    });
+    
+    await batch.commit();
 };
 
 export const deleteKnowledgeDocument = async (uid: string, document: KnowledgeDocument): Promise<void> => {
-    if (!storage || !db) throw new Error("Firebase not configured.");
-    const storageRef = storage.ref(`knowledge/${uid}/${document.id}`);
-    await storageRef.delete();
-    await getKnowledgeCollection(uid).doc(document.id).delete();
+    if (!db) throw new Error("Firebase not configured.");
+
+    const knowledgeDocRef = getKnowledgeCollection(uid).doc(document.id);
+    const chunksCollectionRef = knowledgeDocRef.collection('chunks');
+    
+    // Delete all chunk subdocuments
+    const querySnapshot = await chunksCollectionRef.get();
+    const batch = db.batch();
+    querySnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    // Delete the main document entry
+    await knowledgeDocRef.delete();
 };
 
+// This function is no longer used for search but kept for potential direct content viewing.
 export const getKnowledgeDocumentContent = async (uid: string, docId: string): Promise<string> => {
     if (!storage) throw new Error("Firebase Storage not configured.");
     const storageRef = storage.ref(`knowledge/${uid}/${docId}`);
     const url = await storageRef.getDownloadURL();
-    // Fetch the content from the URL. Note: this might require CORS configuration on your bucket.
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Failed to download document content: ${response.statusText}`);
     }
-    // Simple text extraction. For complex files (.pdf, .docx), a more advanced server-side parser would be needed.
     return response.text();
+};
+
+export const getKnowledgeVectorsForUser = async (uid: string): Promise<{ docId: string, chunkId: string, text: string, embedding: number[] }[]> => {
+    const knowledgeCol = getKnowledgeCollection(uid);
+    const docsSnapshot = await knowledgeCol.get();
+    
+    const allVectors: { docId: string, chunkId: string, text: string, embedding: number[] }[] = [];
+    
+    for (const doc of docsSnapshot.docs) {
+        const chunksSnapshot = await doc.ref.collection('chunks').get();
+        chunksSnapshot.forEach(chunkDoc => {
+            const data = chunkDoc.data();
+            allVectors.push({
+                docId: doc.id,
+                chunkId: chunkDoc.id,
+                text: data.text,
+                embedding: data.embedding
+            });
+        });
+    }
+    
+    return allVectors;
 };

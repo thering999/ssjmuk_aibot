@@ -3,7 +3,7 @@ import { Modality, Blob, LiveServerMessage } from '@google/genai';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
 import { fileToBase64 } from '../utils/fileUtils';
 import { useTranslation } from '../hooks/useTranslation';
-import { getAiClient } from '../services/geminiService';
+import { ai } from '../services/geminiService';
 import { clinicFinderTool } from '../tools/clinicFinder';
 import { getClinicInfo } from '../services/clinicService';
 import { LiveTranscript, LiveConversationHandle } from '../types';
@@ -81,7 +81,6 @@ const LiveConversation = forwardRef<LiveConversationHandle>((props, ref) => {
             inputAudioContextRef.current = new ((window as any).AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
             outputAudioContextRef.current = new ((window as any).AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
             
-            const ai = getAiClient();
             const sessionPromise = ai.live.connect({
                 model: 'gemini-2.5-flash-native-audio-preview-09-2025',
                 config: {
@@ -163,17 +162,13 @@ const LiveConversation = forwardRef<LiveConversationHandle>((props, ref) => {
                             }
                         }
                     },
-                    // FIX: Robustly handle different error shapes from the `onerror` callback to prevent type errors when setting state.
-                    onerror: (e: unknown) => {
+                    // @google/genai-fix: Correctly type the event as Error, which is standard for SDK callbacks.
+                    onerror: (e: Error) => {
                         console.error('Live session error:', e);
                         let errorMessage = t('liveErrorConnection');
                         
-                        if (e instanceof Error) {
+                        if (e.message) {
                             errorMessage = e.message;
-                        } else if (typeof e === 'string') {
-                            errorMessage = e;
-                        } else if (e && typeof e === 'object' && 'message' in e) {
-                            errorMessage = String((e as { message: unknown }).message);
                         }
                         
                         setError(errorMessage);
@@ -192,11 +187,14 @@ const LiveConversation = forwardRef<LiveConversationHandle>((props, ref) => {
 
         } catch (err: unknown) {
             console.error("Failed to start live session:", err);
-            // FIX: Improve error handling to provide more specific feedback instead of a generic message.
             let errorMessage = t('liveErrorConnection');
             if (err instanceof Error) {
                 if (err.name === 'NotAllowedError' || err.name === 'NotFoundError') {
                     errorMessage = t('liveErrorMic');
+                } else if (err.message.includes("API key not valid")) {
+                    errorMessage = t('liveApiKeyErrorInitial');
+                } else if (err.message.includes("Invalid API key")) {
+                    errorMessage = t('liveApiKeyErrorInvalid');
                 } else if (err.message) {
                     errorMessage = err.message;
                 }
@@ -270,8 +268,22 @@ const LiveConversation = forwardRef<LiveConversationHandle>((props, ref) => {
     };
 
     const captureFrame = (): boolean => {
-        if (!isCameraOn || !canvasElRef.current) return false;
-        const dataUrl = canvasElRef.current.toDataURL('image/jpeg', 0.9);
+        if (!isCameraOn || !canvasElRef.current || !videoElRef.current) return false;
+        
+        const canvas = canvasElRef.current;
+        const video = videoElRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return false;
+
+        // Ensure canvas is sized correctly
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Draw the current video frame to the canvas
+        ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+
+        // Get the image data
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         currentCapturedImage.current = dataUrl;
         return true;
     };

@@ -29,6 +29,8 @@ export const useChat = (
     isTtsEnabled: boolean,
     useClinicFinder: boolean,
     useKnowledgeBase: boolean,
+    useSymptomChecker: boolean,
+    useMedicationReminder: boolean,
     user: User | null,
     t: (key: string, options?: any) => any,
 ) => {
@@ -212,6 +214,8 @@ export const useChat = (
                     useMaps,
                     location,
                     useClinicFinder,
+                    useSymptomChecker,
+                    useMedicationReminder,
                     conv.systemInstruction,
                     knowledgeContext,
                     abortControllerRef.current.signal
@@ -306,7 +310,7 @@ export const useChat = (
         }
     }, [
         activeConversationId, conversations, addMessage, updateMessage, model,
-        useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, user, t
+        useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, user, t
     ]);
 
     const retryMessage = (failedBotMessageId: string) => {
