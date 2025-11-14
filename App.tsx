@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
-import type { AttachedFile, ModelType, Geolocation, Conversation, EmergencyResult, LiveConversationHandle } from './types';
+import type { AttachedFile, ModelType, Geolocation, Conversation, EmergencyResult, LiveConversationHandle, HealthReportAnalysis } from './types';
 import { useTheme } from './hooks/useTheme';
-import { useChat } from './hooks/useChat';
+import { useChat, UseChatOptions } from './hooks/useChat'; // Import options type
 import { useTranslation } from './hooks/useTranslation';
 import { usePersistentState } from './hooks/usePersistentState';
 import { useAuth } from './hooks/useAuth';
@@ -28,10 +28,11 @@ const LiveConversation = React.lazy(() => import('./components/LiveConversation'
 const HealthReportAnalyzer = React.lazy(() => import('./components/HealthReportAnalyzer'));
 const HealthHub = React.lazy(() => import('./components/HealthHub'));
 const Dashboard = React.lazy(() => import('./components/Dashboard'));
+const Profile = React.lazy(() => import('./components/Profile')); // Lazy load Profile
 const CommunityHealthMap = React.lazy(() => import('./components/CommunityHealthMap'));
 
 
-export type AppMode = 'chat' | 'live' | 'analyzer' | 'hub' | 'dashboard' | 'map';
+export type AppMode = 'chat' | 'live' | 'analyzer' | 'hub' | 'dashboard' | 'map' | 'profile';
 
 const App: React.FC = () => {
   const { t, language, setLanguage } = useTranslation();
@@ -47,6 +48,8 @@ const App: React.FC = () => {
   const [useKnowledgeBase, setUseKnowledgeBase] = usePersistentState('useKnowledgeBase', true);
   const [useSymptomChecker, setUseSymptomChecker] = usePersistentState('useSymptomChecker', true);
   const [useMedicationReminder, setUseMedicationReminder] = usePersistentState('useMedicationReminder', true);
+  const [useMedicationScheduler, setUseMedicationScheduler] = usePersistentState('useMedicationScheduler', true);
+  const [useUserProfile, setUseUserProfile] = usePersistentState('useUserProfile', true); // Add AI Memory toggle state
   
   // App state
   const [isTtsEnabled, setIsTtsEnabled] = usePersistentState('isTtsEnabled', false);
@@ -74,6 +77,11 @@ const App: React.FC = () => {
 
   const isTtsSupported = checkTtsSupport();
 
+  // Consolidate chat options
+  const chatOptions: UseChatOptions = useMemo(() => ({
+    model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, user, t
+  }), [model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, user, t]);
+
   const {
     conversations,
     activeConversation,
@@ -82,12 +90,13 @@ const App: React.FC = () => {
     stopGeneration,
     createNewChat,
     startChatWithDocument,
+    startChatWithAnalysis,
     deleteConversation,
     renameConversation,
     selectConversation,
     updateSystemInstruction,
     isFetching,
-  } = useChat(model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, user, t);
+  } = useChat(chatOptions);
 
    useEffect(() => {
     // This effect now serves both the 'useMaps' toggle in chat and the 'map' mode.
@@ -155,6 +164,11 @@ const App: React.FC = () => {
     }
     setIsDocConfirmOpen(false);
     setDocToConfirm(null);
+  };
+
+  const handleStartDiscussion = async (analysis: HealthReportAnalysis, title: string) => {
+      await startChatWithAnalysis(analysis, title);
+      setCurrentMode('chat');
   };
 
   const handlePersonaSave = (instruction: string) => {
@@ -323,15 +337,17 @@ const App: React.FC = () => {
         }
         return <div className="flex-1 flex items-center justify-center"><LoadingIndicator className="h-8 w-8 text-teal-600" /></div>;
       case 'live':
-        return <LiveConversation ref={liveConversationRef} />;
+        return <LiveConversation ref={liveConversationRef} onShowToast={showToast} user={user} />;
       case 'analyzer':
-        return <HealthReportAnalyzer onShowToast={showToast} />;
+        return <HealthReportAnalyzer onShowToast={showToast} onStartDiscussion={handleStartDiscussion} />;
       case 'hub':
         return <HealthHub />;
       case 'dashboard':
         return <Dashboard />;
       case 'map':
         return <CommunityHealthMap userLocation={location} locationError={locationError} />;
+      case 'profile':
+        return <Profile />;
       default:
         return null;
     }
@@ -369,6 +385,8 @@ const App: React.FC = () => {
           useKnowledgeBase={useKnowledgeBase} setUseKnowledgeBase={setUseKnowledgeBase}
           useSymptomChecker={useSymptomChecker} setUseSymptomChecker={setUseSymptomChecker}
           useMedicationReminder={useMedicationReminder} setUseMedicationReminder={setUseMedicationReminder}
+          useMedicationScheduler={useMedicationScheduler} setUseMedicationScheduler={setUseMedicationScheduler}
+          useUserProfile={useUserProfile} setUseUserProfile={setUseUserProfile}
           locationError={locationError}
           setMode={setCurrentMode}
           currentMode={currentMode}

@@ -1,21 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getProjectId } from '../services/firebase';
 import LoadingIndicator from './LoadingIndicator';
 
 const Auth: React.FC = () => {
-  const { user, signIn, signOut, loading } = useAuth();
+  const { user, signIn, signOut, loading, error: authError } = useAuth();
   const [errorInfo, setErrorInfo] = useState<{ code: string; message: string } | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  const handleSignIn = async () => {
-    setErrorInfo(null);
-    try {
-      await signIn();
-    } catch (error: any) {
-      console.error("An error occurred during sign-in:", error);
-      setErrorInfo({ code: error.code, message: error.message });
+  useEffect(() => {
+    if (authError) {
+        setErrorInfo(authError);
     }
+  }, [authError]);
+
+  const handleSignIn = () => {
+    setErrorInfo(null);
+    signIn();
   };
   
   const handleCopy = (text: string) => {

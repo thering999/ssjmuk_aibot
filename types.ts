@@ -42,6 +42,10 @@ export interface ChatMessage {
   };
   followUpQuestions?: string[];
   isGeneratingFollowUps?: boolean;
+  generatedDocument?: {
+    fileName: string;
+    dataUrl: string;
+  };
 }
 
 export interface Conversation {
@@ -66,6 +70,13 @@ export interface LiveTranscript {
   user: string;
   bot: string;
   userImage?: string;
+  attachmentName?: string;
+  generatedImageUrl?: string;
+  generatedDocument?: {
+    fileName: string;
+    dataUrl: string;
+  };
+  toolCalls?: any[];
 }
 
 export interface ClinicInfo {
@@ -124,4 +135,25 @@ export interface HealthRecord {
 export interface MapSearchResult {
   summary: string;
   places: ChatMessageSource[];
+}
+
+export interface MedicationSchedule {
+  id: string;
+  medication: string;
+  dosage: string;
+  frequency: string; // e.g., "Daily", "Every 6 hours"
+  times: string[]; // e.g., ["08:00", "20:00"]
+  endsAt: number | null; // Timestamp for when the schedule ends
+}
+
+export interface UserProfile {
+    name?: string;
+    work?: string;
+    interests?: string[];
+    preferences?: string[];
+    allergies?: string[];
+    medicalConditions?: string[];
+    medications?: string[];
+    healthGoals?: string[];
+    medicationSchedules?: MedicationSchedule[];
 }

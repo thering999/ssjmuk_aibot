@@ -27,9 +27,10 @@ const StatusIndicator: React.FC<{ status: AnalyzedMetric['status'] }> = ({ statu
 
 interface HealthReportAnalyzerProps {
     onShowToast: (message: string) => void;
+    onStartDiscussion: (analysis: HealthReportAnalysis, title: string) => void;
 }
 
-const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast }) => {
+const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast, onStartDiscussion }) => {
     const { t } = useTranslation();
     const { user } = useAuth();
     const [file, setFile] = useState<AttachedFile | null>(null);
@@ -196,15 +197,24 @@ const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast
                                 <div className="flex justify-between items-center mb-2">
                                     <h3 className="text-lg font-semibold">AI Analysis</h3>
                                      {analysis && (
-                                        <div title={!user ? t('dashboardSaveDisabledTooltip') : undefined}>
+                                        <div className="flex items-center space-x-2">
                                             <button 
-                                                onClick={handleSave} 
-                                                disabled={isSaving || !user}
-                                                className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+                                                onClick={() => onStartDiscussion(analysis, file.name)}
+                                                className="px-3 py-1.5 text-sm font-semibold text-white bg-teal-600 rounded-md hover:bg-teal-700 flex items-center"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                                                {isSaving ? t('dashboardSaving') : t('dashboardSave')}
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                                Discuss with AI
                                             </button>
+                                            <div title={!user ? t('dashboardSaveDisabledTooltip') : undefined}>
+                                                <button 
+                                                    onClick={handleSave} 
+                                                    disabled={isSaving || !user}
+                                                    className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                                    {isSaving ? t('dashboardSaving') : t('dashboardSave')}
+                                                </button>
+                                            </div>
                                         </div>
                                      )}
                                 </div>

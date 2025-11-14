@@ -3,11 +3,22 @@ import type { Geolocation, MapSearchResult, ChatMessageSource } from '../types';
 import { GenerateContentResponse } from "@google/genai";
 
 /**
- * Safely extracts text from a Gemini API response object.
+ * Safely extracts and concatenates text from a Gemini API response object,
+ * avoiding the `.text` getter to prevent console warnings about non-text parts.
  */
 function extractText(response: GenerateContentResponse): string {
-    // @google/genai-fix: Use the `.text` property for direct text access.
-    return response.text;
+    let text = '';
+    if (response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        if (candidate.content && candidate.content.parts) {
+            for (const part of candidate.content.parts) {
+                if (part.text) {
+                    text += part.text;
+                }
+            }
+        }
+    }
+    return text;
 }
 
 interface GroundingChunk {
@@ -40,7 +51,6 @@ export const searchPlaces = async (query: string, location: Geolocation): Promis
             config: {
                 tools: [{ googleMaps: {} }],
                 temperature: 0.7,
-                // @google/genai-fix: The 'toolConfig' property should be nested inside the 'config' object.
                 toolConfig: {
                     retrievalConfig: {
                         latLng: {

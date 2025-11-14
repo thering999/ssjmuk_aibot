@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import type { Conversation, ChatMessage, ModelType, Geolocation, AttachedFile } from '../types';
-import { generateText, generateFollowUpQuestions } from '../services/chatService';
+import type { Conversation, ChatMessage, ModelType, Geolocation, AttachedFile, HealthReportAnalysis, UserProfile, MedicationSchedule } from '../types';
+import { generateText, generateFollowUpQuestions, GenerateTextOptions } from '../services/chatService';
 import { generateImage, editImage } from '../services/imageService';
 import { generateVideo, ApiKeyNotSelectedError } from '../services/videoService';
 import { textToSpeech, stopTts } from '../services/ttsService';
-import { fetchConversations, createConversation, updateConversation, removeConversation, User } from '../services/firebase';
+import { fetchConversations, createConversation, updateConversation, removeConversation, type User, getUserProfile, updateUserProfile } from '../services/firebase';
 import { searchKnowledgeBase } from '../services/knowledgeService';
 
 const createNewConversation = (t: (key: string) => string, title?: string): Conversation => ({
@@ -21,22 +21,29 @@ const createNewConversation = (t: (key: string) => string, title?: string): Conv
     systemInstruction: '',
 });
 
-export const useChat = (
-    model: ModelType,
-    useSearch: boolean,
-    useMaps: boolean,
-    location: Geolocation | null,
-    isTtsEnabled: boolean,
-    useClinicFinder: boolean,
-    useKnowledgeBase: boolean,
-    useSymptomChecker: boolean,
-    useMedicationReminder: boolean,
-    user: User | null,
-    t: (key: string, options?: any) => any,
-) => {
+// Add an options type for clarity
+export type UseChatOptions = {
+    model: ModelType;
+    useSearch: boolean;
+    useMaps: boolean;
+    location: Geolocation | null;
+    isTtsEnabled: boolean;
+    useClinicFinder: boolean;
+    useKnowledgeBase: boolean;
+    useSymptomChecker: boolean;
+    useMedicationReminder: boolean;
+    useMedicationScheduler: boolean;
+    useUserProfile: boolean;
+    user: User | null;
+    t: (key: string, options?: any) => any;
+}
+
+export const useChat = (options: UseChatOptions) => {
+    const { model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, user, t } = options;
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const [isFetching, setIsFetching] = useState(true);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -58,12 +65,19 @@ export const useChat = (
                 })
                 .catch(console.error)
                 .finally(() => setIsFetching(false));
+            
+            // Also fetch user profile
+             getUserProfile(user.uid)
+                .then(profile => setUserProfile(profile))
+                .catch(err => console.warn("Could not fetch user profile:", err));
+
         } else {
             // Local mode for non-signed-in users
             const newConv = createNewConversation(t);
             setConversations([newConv]);
             setActiveConversationId(newConv.id);
             setIsFetching(false);
+            setUserProfile(null);
         }
     }, [user, t]);
 
@@ -199,27 +213,33 @@ export const useChat = (
                 
                 let knowledgeContext: string | null = null;
                 if (useKnowledgeBase) {
-                    knowledgeContext = await searchKnowledgeBase(text, user);
+                    knowledgeContext = await searchKnowledgeBase(text, user); // user is available in this scope
                 }
 
                 updateMessage(convId, botMessageId, { isThinking: true });
                 let fullResponseText = '';
+                let generatedDoc: ChatMessage['generatedDocument'] | undefined;
                 
-                for await (const chunk of generateText(
-                    promptWithContext,
-                    mediaFiles,
+                const genOptions: GenerateTextOptions = {
+                    prompt: promptWithContext,
+                    files: mediaFiles,
                     history,
                     model,
-                    useSearch,
+                    useSearch, // from options
                     useMaps,
                     location,
                     useClinicFinder,
                     useSymptomChecker,
                     useMedicationReminder,
-                    conv.systemInstruction,
+                    useMedicationScheduler,
+                    useUserProfile,
+                    systemInstructionText: conv.systemInstruction,
                     knowledgeContext,
-                    abortControllerRef.current.signal
-                )) {
+                    userProfile, // from state
+                    abortSignal: abortControllerRef.current.signal
+                };
+
+                for await (const chunk of generateText(genOptions)) {
                     if (chunk.textChunk) {
                         fullResponseText += chunk.textChunk;
                         updateMessage(convId, botMessageId, { text: fullResponseText, isThinking: false });
@@ -228,11 +248,41 @@ export const useChat = (
                         updateMessage(convId, botMessageId, { sources: chunk.sources });
                     }
                     if (chunk.toolUse) {
+                        if (chunk.toolUse.name === 'createDocument' && chunk.toolUse.args) {
+                           const { content, fileName = 'document.txt' } = chunk.toolUse.args;
+                           const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                           const dataUrl = URL.createObjectURL(blob);
+                           generatedDoc = { fileName, dataUrl };
+                        }
+                        if (chunk.toolUse.name === 'scheduleMedication' && chunk.toolUse.isCalling && user) {
+                            try {
+                                const { medication, dosage, frequency, times, durationInDays } = chunk.toolUse.args;
+                                const newSchedule: MedicationSchedule = {
+                                    id: uuidv4(),
+                                    medication,
+                                    dosage,
+                                    frequency,
+                                    times,
+                                    endsAt: durationInDays ? new Date(Date.now() + durationInDays * 24 * 60 * 60 * 1000).getTime() : null,
+                                };
+                                const currentProfile = await getUserProfile(user.uid) || {};
+                                const updatedSchedules = [...(currentProfile.medicationSchedules || []), newSchedule];
+                                await updateUserProfile(user.uid, { ...currentProfile, medicationSchedules: updatedSchedules });
+                                setUserProfile(prev => ({ ...(prev || {}), medicationSchedules: updatedSchedules }));
+                            } catch (error) {
+                                console.error("Failed to save medication schedule:", error);
+                            }
+                        }
                         updateMessage(convId, botMessageId, { toolUse: chunk.toolUse, isThinking: false });
                     }
                 }
                 
-                updateMessage(convId, botMessageId, { isProcessing: false });
+                const finalUpdates: Partial<ChatMessage> = { isProcessing: false };
+                if (generatedDoc) {
+                    finalUpdates.generatedDocument = generatedDoc;
+                }
+                updateMessage(convId, botMessageId, finalUpdates);
+
 
                 if (isTtsEnabled) {
                     textToSpeech(fullResponseText).catch(err => {
@@ -310,7 +360,7 @@ export const useChat = (
         }
     }, [
         activeConversationId, conversations, addMessage, updateMessage, model,
-        useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, user, t
+        useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, user, t, userProfile
     ]);
 
     const retryMessage = (failedBotMessageId: string) => {
@@ -372,6 +422,33 @@ export const useChat = (
         );
     }, [t, sendMessage, user]);
 
+    const startChatWithAnalysis = useCallback(async (analysis: HealthReportAnalysis, reportTitle: string) => {
+        const newConv = createNewConversation(t, `Analysis of ${reportTitle}`);
+        newConv.systemInstruction = "You are an AI assistant helping a user understand their health report. The user has provided a JSON summary of their report in the first message. Use this data to answer their questions clearly and simply. Do not provide medical advice. Be empathetic and helpful.";
+        
+        setConversations(prev => [newConv, ...prev]);
+        setActiveConversationId(newConv.id);
+
+        if (user) {
+            await createConversation(user.uid, { ...newConv, messages: [] });
+        }
+
+        const analysisFile: AttachedFile = {
+            name: "analysis_summary.json",
+            mimeType: "application/json",
+            textContent: JSON.stringify(analysis, null, 2),
+        };
+
+        const initialPrompt = "Please provide a brief, friendly summary of my health report based on the attached data, then ask me what specific parts I'd like to discuss.";
+
+        await sendMessage(
+            initialPrompt,
+            [analysisFile],
+            '1:1',
+            { conversationId: newConv.id, conversation: newConv }
+        );
+    }, [t, sendMessage, user]);
+
     const deleteConversation = useCallback((id: string) => {
         const remainingConvs = conversations.filter(c => c.id !== id);
         setConversations(remainingConvs);
@@ -408,6 +485,7 @@ export const useChat = (
         stopGeneration,
         createNewChat,
         startChatWithDocument,
+        startChatWithAnalysis,
         deleteConversation,
         renameConversation,
         selectConversation,

@@ -53,16 +53,20 @@ const Sources: React.FC<{ sources: ChatMessageSource[] }> = ({ sources }) => {
     const { t } = useTranslation();
     if (!sources || sources.length === 0) return null;
     return (
-        <div className="mt-3 border-t border-gray-200 dark:border-gray-600 pt-3">
-            <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">{t('sources')}</h4>
-            <div className="flex flex-wrap gap-2">
+        <div className="mt-4 border-t border-gray-200 dark:border-gray-600 pt-3">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t('sources')}</h4>
+            <ul className="space-y-2">
                 {sources.map((source, index) => (
-                    <a href={source.uri} target="_blank" rel="noopener noreferrer" key={index}
-                       className="text-xs bg-gray-100 dark:bg-gray-700 text-teal-700 dark:text-teal-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full px-2 py-1 truncate max-w-xs">
-                        {index + 1}. {source.title}
-                    </a>
+                    <li key={index} className="flex items-start">
+                        <span className="text-xs font-mono text-gray-500 dark:text-gray-400 mr-2 pt-0.5">{`[${index + 1}]`}</span>
+                        <a href={source.uri} target="_blank" rel="noopener noreferrer"
+                           className="text-sm text-teal-600 dark:text-teal-400 hover:underline truncate"
+                           title={source.uri}>
+                            {source.title}
+                        </a>
+                    </li>
                 ))}
-            </div>
+            </ul>
         </div>
     );
 };
@@ -162,6 +166,29 @@ const ToolUseDisplay: React.FC<{ toolUse: ChatMessage['toolUse'], onSendFollowUp
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     if (!toolUse) return null;
 
+    // Custom renderer for openWebsite tool
+    if (toolUse.name === 'openWebsite' && toolUse.result && !toolUse.isCalling) {
+        try {
+            const result = JSON.parse(toolUse.result);
+            const url = toolUse.args.url;
+            if (result.success && url) {
+                return (
+                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        <span>Opened <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-teal-600 dark:text-teal-400 hover:underline">{url}</a> in a new tab.</span>
+                    </div>
+                );
+            } else {
+                 return (
+                    <div className="mt-2 text-xs text-red-500 dark:text-red-400 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-600 flex items-center">
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-16 0 9 9 0 0116 0z" /></svg>
+                         <span>Failed to open website: {result.message}</span>
+                    </div>
+                 );
+            }
+        } catch (e) { /* Fallback to raw display */ }
+    }
+
     // Custom renderer for Symptom Checker tool
     if (toolUse.name === 'checkSymptoms' && toolUse.result && !toolUse.isCalling) {
         try {
@@ -228,7 +255,7 @@ const ToolUseDisplay: React.FC<{ toolUse: ChatMessage['toolUse'], onSendFollowUp
 
 const Message: React.FC<MessageProps> = ({ message, onRetry, onSendFollowUp }) => {
   const { t } = useTranslation();
-  const { sender, text, isProcessing, isError, attachedFiles, sources, imageUrl, videoUrl, mediaType, progressText, isThinking, toolUse, followUpQuestions, isGeneratingFollowUps } = message;
+  const { sender, text, isProcessing, isError, attachedFiles, sources, imageUrl, videoUrl, mediaType, progressText, isThinking, toolUse, followUpQuestions, isGeneratingFollowUps, generatedDocument } = message;
   const [isCopied, setIsCopied] = useState(false);
 
   if (message.id === 'initial-welcome') return null; // WelcomeScreen handles this
@@ -306,12 +333,13 @@ const Message: React.FC<MessageProps> = ({ message, onRetry, onSendFollowUp }) =
                     {isThinking && !text && <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 italic"><ThinkingIndicator /> <span className="ml-2">{t('thinking')}</span></div>}
                     
                     {text && (
-                        <ReactMarkdown
-                          children={text}
-                          remarkPlugins={[remarkGfm]}
-                          components={{ code: CodeBlock }}
-                          className="whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none break-words"
-                        />
+                        <div className="whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none break-words">
+                          <ReactMarkdown
+                            children={text}
+                            remarkPlugins={[remarkGfm]}
+                            components={{ code: CodeBlock }}
+                          />
+                        </div>
                     )}
                     
                     {isProcessing && !text && mediaType === 'image' && <div className="text-sm italic">{t('generatingImage')}</div>}
@@ -322,6 +350,17 @@ const Message: React.FC<MessageProps> = ({ message, onRetry, onSendFollowUp }) =
                     
                     {attachedFiles && attachedFiles.map((file, index) => <AttachedFilePill key={index} file={file} />)}
                     
+                    {generatedDocument && (
+                        <a 
+                            href={generatedDocument.dataUrl} 
+                            download={generatedDocument.fileName}
+                            className="mt-3 inline-flex items-center px-3 py-1.5 bg-blue-100 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-sm font-semibold rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            {t('downloadFile', { fileName: generatedDocument.fileName })}
+                        </a>
+                    )}
+
                     <ToolUseDisplay toolUse={toolUse} onSendFollowUp={onSendFollowUp} />
                     <Sources sources={sources} />
 

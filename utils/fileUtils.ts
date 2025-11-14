@@ -4,8 +4,9 @@ import mammoth from 'mammoth';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 
 // Set up the worker source. This is crucial for pdf.js to work in a non-bundled environment.
-// The import map will resolve this path to the correct esm.sh CDN URL.
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/build/pdf.worker.mjs';
+// Using a full, absolute URL to the worker on the CDN is more robust and avoids resolution issues.
+const PDFJS_WORKER_URL = 'https://aistudiocdn.com/pdfjs-dist@5.4.394/build/pdf.worker.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
 
 
 /**

@@ -17,11 +17,15 @@ interface ModelSelectorProps {
   setUseSymptomChecker: (enabled: boolean) => void;
   useMedicationReminder: boolean;
   setUseMedicationReminder: (enabled: boolean) => void;
+  useMedicationScheduler: boolean;
+  setUseMedicationScheduler: (enabled: boolean) => void;
+  useUserProfile: boolean;
+  setUseUserProfile: (enabled: boolean) => void;
   locationError: string | null;
 }
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({
-  model, setModel, useSearch, setUseSearch, useMaps, setUseMaps, useClinicFinder, setUseClinicFinder, useKnowledgeBase, setUseKnowledgeBase, useSymptomChecker, setUseSymptomChecker, useMedicationReminder, setUseMedicationReminder, locationError
+  model, setModel, useSearch, setUseSearch, useMaps, setUseMaps, useClinicFinder, setUseClinicFinder, useKnowledgeBase, setUseKnowledgeBase, useSymptomChecker, setUseSymptomChecker, useMedicationReminder, setUseMedicationReminder, useMedicationScheduler, setUseMedicationScheduler, useUserProfile, setUseUserProfile, locationError
 }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -102,6 +106,20 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                      >
                         <input type="checkbox" checked={useMedicationReminder} onChange={(e) => setUseMedicationReminder(e.target.checked)} className="accent-teal-600" />
                         <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{t('useMedicationReminder')}</span>
+                    </label>
+                    <label
+                       className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                       title={t('tooltipMedicationScheduler')}
+                     >
+                        <input type="checkbox" checked={useMedicationScheduler} onChange={(e) => setUseMedicationScheduler(e.target.checked)} className="accent-teal-600" />
+                        <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{t('useMedicationScheduler')}</span>
+                    </label>
+                    <label
+                       className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                       title={t('tooltipUserProfile')}
+                     >
+                        <input type="checkbox" checked={useUserProfile} onChange={(e) => setUseUserProfile(e.target.checked)} className="accent-teal-600" />
+                        <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{t('useUserProfile')}</span>
                     </label>
                     <label
                       className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"

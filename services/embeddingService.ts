@@ -2,23 +2,16 @@ import { ai } from "./geminiService";
 
 /**
  * Creates a vector embedding for a given text using a Gemini model.
- * Note: This uses `getGenerativeModel`, which may be against general guidelines,
- * but is necessary for the specific `embedContent` functionality.
  * @param text The text to create an embedding for.
  * @returns A promise that resolves to an array of numbers representing the vector.
  */
 export const createEmbedding = async (text: string): Promise<number[]> => {
     try {
-        // The user specifically requested 'embedding-001'. We'll use a known modern equivalent.
-        // The SDK might handle aliasing, but using a specific version is safer.
         const embeddingModel = "text-embedding-004";
-        // @google/genai-fix: `getGenerativeModel` is deprecated. Use the `ai.models.embedContent` method instead.
         const response = await ai.models.embedContent({
             model: embeddingModel,
-            // @google/genai-fix: Per the error message, the property should be `contents`.
-            contents: text,
+            contents: { parts: [{ text }] },
         });
-        // @google/genai-fix: Per the error message, the property should be `embedding`. The user's SDK version seems to return a single embedding object on this property.
         return response.embedding.values;
     } catch (error) {
         console.error("Error creating embedding:", error);

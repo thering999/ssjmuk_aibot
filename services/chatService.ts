@@ -1,20 +1,35 @@
 import { Content, Part, GenerateContentResponse, Type, FunctionDeclaration } from "@google/genai";
 import type { TFunction } from 'i18next';
-import type { AttachedFile, ModelType, Geolocation, ChatMessageSource, ChatMessage } from '../types';
+import type { AttachedFile, ModelType, Geolocation, ChatMessageSource, ChatMessage, UserProfile } from '../types';
 import { clinicFinderTool } from '../tools/clinicFinder';
 import { symptomCheckerTool } from '../tools/symptomCheckerTool';
 import { medicationReminderTool } from '../tools/medicationReminderTool';
+import { medicationSchedulerTool } from '../tools/medicationSchedulerTool';
+import { outputGenerationTools } from '../tools/outputGenerationTools';
+import { userProfileTool } from '../tools/healthProfileTool';
+import { browserTools } from '../tools/browserTools';
 import { getClinicInfo } from './clinicService';
 import { getSymptomAdvice } from './symptomService';
 import { setReminder } from './reminderService';
 import { ai } from './geminiService';
 
 /**
- * Safely extracts text from a Gemini API response object.
+ * Safely extracts and concatenates text from a Gemini API response object,
+ * avoiding the `.text` getter to prevent console warnings about non-text parts.
  */
 function extractText(response: GenerateContentResponse): string {
-    // @google/genai-fix: Use the `.text` property for direct text access.
-    return response.text;
+    let text = '';
+    if (response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        if (candidate.content && candidate.content.parts) {
+            for (const part of candidate.content.parts) {
+                if (part.text) {
+                    text += part.text;
+                }
+            }
+        }
+    }
+    return text;
 }
 
 
@@ -44,21 +59,32 @@ const formatSources = (chunks: GroundingChunk[] | undefined): ChatMessageSource[
     return Array.from(new Map(sources.map(item => [item.uri, item])).values());
 };
 
-export async function* generateText(
-    prompt: string,
-    files: AttachedFile[],
-    history: Content[],
-    model: ModelType,
-    useSearch: boolean,
-    useMaps: boolean,
-    location: Geolocation | null,
-    useClinicFinder: boolean,
-    useSymptomChecker: boolean,
-    useMedicationReminder: boolean,
-    systemInstructionText: string,
-    knowledgeContext: string | null,
-    abortSignal: AbortSignal
-): AsyncGenerator<{ textChunk?: string, sources?: ChatMessageSource[], toolUse?: ChatMessage['toolUse'] }> {
+export type GenerateTextOptions = {
+    prompt: string;
+    files: AttachedFile[];
+    history: Content[];
+    model: ModelType;
+    useSearch: boolean;
+    useMaps: boolean;
+    location: Geolocation | null;
+    useClinicFinder: boolean;
+    useSymptomChecker: boolean;
+    useMedicationReminder: boolean;
+    useMedicationScheduler: boolean;
+    useUserProfile: boolean;
+    systemInstructionText: string;
+    knowledgeContext: string | null;
+    userProfile: UserProfile | null;
+    abortSignal: AbortSignal;
+}
+
+export async function* generateText(options: GenerateTextOptions): AsyncGenerator<{ textChunk?: string, sources?: ChatMessageSource[], toolUse?: ChatMessage['toolUse'] }> {
+    const {
+        prompt, files, history, model, useSearch, useMaps, location,
+        useClinicFinder, useSymptomChecker, useMedicationReminder, useMedicationScheduler,
+        useUserProfile, systemInstructionText, knowledgeContext, userProfile, abortSignal
+    } = options;
+
     const geminiModel = modelMap[model];
     const tools: any[] = [];
     const functionDeclarations: FunctionDeclaration[] = [];
@@ -68,6 +94,10 @@ export async function* generateText(
     if (useClinicFinder) functionDeclarations.push(clinicFinderTool);
     if (useSymptomChecker) functionDeclarations.push(symptomCheckerTool);
     if (useMedicationReminder) functionDeclarations.push(medicationReminderTool);
+    if (useMedicationScheduler) functionDeclarations.push(medicationSchedulerTool);
+    if (useUserProfile) functionDeclarations.push(userProfileTool);
+    functionDeclarations.push(...outputGenerationTools);
+    functionDeclarations.push(...browserTools);
     
     if (functionDeclarations.length > 0) {
         tools.push({ functionDeclarations });
@@ -89,9 +119,16 @@ export async function* generateText(
 
     const contents: Content[] = [...history, { role: 'user', parts }];
     
-    let instructionWithKnowledge = systemInstructionText;
+    let instructionWithKnowledge = `You are a personalized AI assistant. When the user shares personal details (like their name, work, interests, preferences, or health information), use the 'rememberUserDetails' tool to save them. Proactively use the information you have saved about the user to tailor your responses. ${systemInstructionText || ''}`;
+    
     if (knowledgeContext) {
-        instructionWithKnowledge = `Please prioritize the following information to answer the user's question. This is official, curated data that should be considered the primary source of truth.\n\n[Official Data]\n${knowledgeContext}\n---\n\nOriginal instructions: ${systemInstructionText}`;
+        instructionWithKnowledge = `Please prioritize the following information to answer the user's question. This is official, curated data that should be considered the primary source of truth.\n\n[Official Data]\n${knowledgeContext}\n---\n\nOriginal instructions: ${instructionWithKnowledge}`;
+    }
+     if (userProfile) {
+        const profileContext = `\n\n[User Profile]\nThis is your memory of the user. Use these details for personalization and update them using the 'rememberUserDetails' tool when the user provides new information:\n${JSON.stringify(userProfile, null, 2)}`;
+        instructionWithKnowledge = instructionWithKnowledge 
+            ? `${instructionWithKnowledge}${profileContext}` 
+            : profileContext;
     }
     
     const config: any = {};
@@ -129,7 +166,24 @@ export async function* generateText(
         if (functionCalls.length > 0 && !abortSignal.aborted) {
             const toolParts: Part[] = [];
             for (const call of functionCalls) {
-                if (call.name === 'getClinicInfo') {
+                if (call.name === 'createDocument') {
+                     yield { toolUse: { name: 'createDocument', args: call.args, isCalling: false, result: "Client-side document creation initiated." }};
+                     toolParts.push({ functionResponse: { name: call.name, response: { result: { success: true, message: "Document has been created for the user to download." } } } });
+                } else if (call.name === 'openWebsite') {
+                    const url = call.args.url;
+                    if (url) {
+                        let result: { success: boolean, message: string };
+                        // Security check to prevent "javascript:" URIs etc.
+                        if (String(url).startsWith('http:') || String(url).startsWith('https://')) {
+                            window.open(url, '_blank');
+                            result = { success: true, message: `Opened ${url} in a new tab.` };
+                        } else {
+                            result = { success: false, message: `Invalid or insecure URL format: ${url}` };
+                        }
+                        yield { toolUse: { name: 'openWebsite', args: call.args, result: JSON.stringify(result), isCalling: false }};
+                        toolParts.push({ functionResponse: { name: call.name, response: { result } } });
+                    }
+                } else if (call.name === 'getClinicInfo') {
                     yield { toolUse: { name: 'getClinicInfo', args: call.args, isCalling: true }};
                     const result = await getClinicInfo(call.args.location);
                     yield { toolUse: { name: 'getClinicInfo', args: call.args, result: JSON.stringify(result, null, 2), isCalling: false }};
@@ -144,108 +198,132 @@ export async function* generateText(
                     const result = await setReminder(call.args.time, call.args.medication);
                     yield { toolUse: { name: 'setMedicationReminder', args: call.args, result: result, isCalling: false }};
                     toolParts.push({ functionResponse: { name: call.name, response: { result } } });
+                } else if (call.name === 'scheduleMedication') {
+                    yield { toolUse: { name: 'scheduleMedication', args: call.args, isCalling: true }};
+                    const result = { success: true, message: "The medication schedule has been saved to the user's profile." };
+                    yield { toolUse: { name: 'scheduleMedication', args: call.args, result: JSON.stringify(result), isCalling: false }};
+                    toolParts.push({ functionResponse: { name: call.name, response: { result } } });
                 }
             }
-
-            const modelTurn: Part[] = functionCalls.map(fc => ({ functionCall: fc }));
-            const secondStreamContents = [...contents, { role: 'model', parts: modelTurn }, { role: 'tool', parts: toolParts }];
             
-            const secondStreamResult = await ai.models.generateContentStream({
-                ...requestPayload,
-                contents: secondStreamContents,
-            });
+            if (toolParts.length > 0) {
+                contents.push({ role: 'model', parts: [{ functionCall: functionCalls[0] }] });
+                contents.push({ role: 'tool', parts: toolParts });
 
-            for await (const chunk of secondStreamResult) {
-                if (abortSignal.aborted) break;
-                const textChunk = extractText(chunk);
-                if (textChunk) yield { textChunk };
-                const grounding = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[] | undefined;
-                if (grounding) {
-                    const sources = formatSources(grounding);
-                    if (sources.length > 0) yield { sources };
-                }
-            }
-        } else {
-            if (firstPassGroundingChunks.length > 0) {
-                const sources = formatSources(firstPassGroundingChunks);
-                if (sources.length > 0) yield { sources };
+                const secondStreamResult = await ai.models.generateContentStream({ ...requestPayload, contents });
+                 for await (const chunk of secondStreamResult) {
+                    if (abortSignal.aborted) break;
+                    const textChunk = extractText(chunk);
+                    if(textChunk) yield { textChunk };
+                     // Sources might also come in the second pass
+                    const grounding = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[] | undefined;
+                    if (grounding) yield { sources: formatSources(grounding) };
+                 }
             }
         }
-    } catch (error) {
+        
+        const allGroundingChunks = [...firstPassGroundingChunks];
+        yield { sources: formatSources(allGroundingChunks) };
+
+    } catch (error: any) {
+        console.error("Error in generateText stream:", error);
         if (error.name !== 'AbortError') {
-            console.error("Error during text generation stream:", error);
-            throw error;
+             throw error;
         }
     }
 }
 
-export const generateFollowUpQuestions = async (lastUserPrompt: string, lastBotResponse: string): Promise<string[]> => {
+
+/**
+ * Generates relevant follow-up questions based on the last interaction.
+ * @param userPrompt - The last message sent by the user.
+ * @param botResponse - The last response from the bot.
+ * @returns A promise that resolves to an array of string questions.
+ */
+export const generateFollowUpQuestions = async (userPrompt: string, botResponse: string): Promise<string[]> => {
     try {
-        const prompt = `Based on the last user question and the bot's answer, generate 2 or 3 relevant follow-up questions the user might ask next.
-
-User Question: "${lastUserPrompt}"
-Bot Answer: "${lastBotResponse}"
-
-Provide only a JSON array of strings in your response. For example: ["Question 1?", "Question 2?", "Question 3?"]`;
+        const prompt = `Based on the last user prompt and the bot's response, generate 3 concise and relevant follow-up questions the user might ask. Respond with ONLY a JSON array of strings.
+        
+        Last User Prompt: "${userPrompt}"
+        
+        Bot Response: "${botResponse}"
+        
+        Example Response:
+        ["What are the side effects?", "Where can I get this medication?", "How long should I take it for?"]`;
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: prompt,
+            contents: [{ parts: [{ text: prompt }] }],
             config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        questions: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING }
-                        }
-                    }
-                }
+                temperature: 0.7,
+                responseMimeType: "application/json",
             }
         });
 
-        const jsonText = extractText(response).trim();
-        if (!jsonText) return [];
-        
-        const cleanedJsonText = jsonText.replace(/^```json\s*|```$/g, '').trim();
-        const result = JSON.parse(cleanedJsonText);
-        if (result && Array.isArray(result.questions)) return result.questions;
-        if (Array.isArray(result)) return result.filter(item => typeof item === 'string');
-        
+        const text = extractText(response);
+        if (!text) {
+            return [];
+        }
+
+        const questions = JSON.parse(text);
+        if (Array.isArray(questions) && questions.every(q => typeof q === 'string')) {
+            return questions;
+        }
+
         return [];
     } catch (error) {
+        // Log the raw error for debugging but don't crash the app
         console.error("Error generating follow-up questions:", error);
-        throw error;
+        // Silently fail to not disrupt the user experience
+        return [];
     }
 };
 
-export const getAvailableVoiceCommands = (t: TFunction): FunctionDeclaration[] => [
-    { name: 'newChat', description: t('voiceCommandDescNewChat') },
-    { name: 'readLastMessage', description: t('voiceCommandDescReadLastMessage') },
-    { name: 'setDarkMode', description: t('voiceCommandDescSetDarkMode') },
-    { name: 'setLightMode', description: t('voiceCommandDescSetLightMode') },
-    { name: 'toggleCamera', description: t('voiceCommandDescToggleCamera') },
-    { name: 'analyzeImage', description: t('voiceCommandDescAnalyzeImage') },
-    { name: 'switchToLiveMode', description: t('voiceCommandDescSwitchToLive') }
-];
+/**
+ * Interprets a natural language voice command and maps it to a predefined function name.
+ * @param command - The transcribed voice command from the user.
+ * @param t - The i18next translation function.
+ * @returns A promise that resolves to a function name string or null if no match is found.
+ */
+export const interpretVoiceCommand = async (command: string, t: TFunction): Promise<string | null> => {
+    const availableCommands = [
+        { name: 'newChat', description: t('voiceCommandDescNewChat') },
+        { name: 'readLastMessage', description: t('voiceCommandDescReadLastMessage') },
+        { name: 'setDarkMode', description: t('voiceCommandDescSetDarkMode') },
+        { name: 'setLightMode', description: t('voiceCommandDescSetLightMode') },
+        { name: 'switchToLiveMode', description: t('voiceCommandDescSwitchToLive') },
+        { name: 'toggleCamera', description: t('voiceCommandDescToggleCamera') },
+        { name: 'analyzeImage', description: t('voiceCommandDescAnalyzeImage') },
+    ];
 
-export const interpretVoiceCommand = async (commandPhrase: string, t: TFunction): Promise<string | null> => {
+    const prompt = `The user issued a voice command: "${command}".
+    
+    Based on the user's command, identify which of the following functions should be called.
+    
+    Available Functions:
+    ${availableCommands.map(c => `- ${c.name}: ${c.description}`).join('\n')}
+    
+    Respond with ONLY the function name that is the best match. If no function is a clear match, respond with "null".`;
+
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `The user said: "${commandPhrase}". Which function should be called?`,
+            contents: [{ parts: [{ text: prompt }] }],
             config: {
-                tools: [{ functionDeclarations: getAvailableVoiceCommands(t) }],
-            },
+                temperature: 0, // We want a deterministic response
+                stopSequences: ['\n']
+            }
         });
+
+        const functionName = extractText(response).trim();
         
-        const functionCall = response.functionCalls?.[0];
-        if (functionCall) {
-            console.log(`[Voice Intent] Matched "${commandPhrase}" to function: ${functionCall.name}`);
-            return functionCall.name;
+        // Validate that the returned name is one of the available commands
+        if (availableCommands.some(c => c.name === functionName)) {
+            return functionName;
         }
+
         return null;
+
     } catch (error) {
         console.error("Error interpreting voice command:", error);
         return null;

@@ -5,7 +5,7 @@ import ModelSelector from './ModelSelector';
 import { useTranslation } from '../hooks/useTranslation';
 
 // Base64 encoded logo for Mukdahan Provincial Public Health Office
-const logoSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAMAAAAJixw1AAABAlBMVEX////9/f38/Pz+/v75+fnx8fHy8vL09PT39/f6+vrz8/P19fX4+Pj7+/v////u7u7q6urm5ubk5OTe3t7Z2dnT09PPz8+7u7vDw8O/v7+pqamfn5+BgYF6enp0dHRsbGxlZWVdXV1SUlJOTk5GRkZCQkI+Pj45OTkxMTElJSV/f395eXlxcXFmZmZVVVVLSkpFRUVDQ0M/Pz83Nzc0NDQsLCwmJiYfHx8aGhoXFxcSEhIMDAwICAgGBgYFBQUCAgIAAADy8vLw8PDm5ubg4ODX19fS0tLLy8vJycnExMS3t7eurq6jo6N+fn5tbW1dXV1SUlJLS0tEREQ8PDwyMjIhISEWFhYODg4KCgoGBgYBAQHuKwVSAAASYklEQVR4nO2d6XuyOhfG5ZqGmoZC9y7t7u7u7u7u7u7u7u7ubr/3S7e7u/v/P3zJgCRtQpI0QZL8fr53IMmQfD5583NeFEVRFCVfQ5p/bfr56dOnS5eS7u5fL7w6uX2+dLl293fL9/f7+/v7e/v7+1p/b//Lq6tXr16+vPr2+eLly6tXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1avvL1/+8+v/8v+7//L/8s9/8Pvv+fL/y1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1f/2vW3z342D0+fPp3+m9OfP39+/vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz-c-o8K1C9L/9k8fP306/WfS8+dPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz-h5z4D8n74t8///8F0aT8KxXjV7cAAAAAElFTSuQmCC";
+const logoSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAMAAAAJixw1AAABAlBMVEX////9/f38/Pz+/v75+fnx8fHy8vL09PT39/f6+vrz8/P19fX4+Pj7+/v////u7u7q6urm5ubk5OTe3t7Z2dnT09PPz8+7u7vDw8O/v7+pqamfn5+BgYF6enp0dHRsbGxlZWVdXV1SUlJOTk5GRkZCQkI+Pj45OTkxMTElJSV/f395eXlxcXFmZmZVVVVLSkpFRUVDQ0M/Pz83Nzc0NDQsLCwmJiYfHx8aGhoXFxcSEhIMDAwICAgGBgYFBQUCAgIAAADy8vLw8PDm5ubg4ODX19fS0tLLy8vJycnExMS3t7eurq6jo6N+fn5tbW1dXV1SUlJLS0tEREQ8PDwyMjIhISEWFhYODg4KCgoGBgYBAQHuKwVSAAASYklEQVR4nO2d6XuyOhfG5ZqGmoZC9y7t7u7u7u7u7u7u7u7ubr/3S7e7u/v/P3zJgCRtQpI0QZL8fr53IMmQfD5583NeFEVRFCVfQ5p/bfr56dOnS5eS7u5fL7w6uX2+dLl293fL9/f7+/v7e/v7+1p/b//Lq6tXr16+vPr2+eLly6tXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1atXr169evXq1avvL1/+8+v/8v+7//L/8s9/8Pvv+fL/y1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1evXr169erVq1f/2vW3z342D0+fPp3+m9OfP39+/vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz-c-o8K1C9L/9k8fP306/WfS8+dPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz58+fPnz9//vz-h5z4D8n74t8///8F0aT8KxXjV7cAAAAAElFTSuQmCC";
 
 interface HeaderProps {
   sidebarIsOpen: boolean;
@@ -29,6 +29,10 @@ interface HeaderProps {
   setUseSymptomChecker: (enabled: boolean) => void;
   useMedicationReminder: boolean;
   setUseMedicationReminder: (enabled: boolean) => void;
+  useMedicationScheduler: boolean;
+  setUseMedicationScheduler: (enabled: boolean) => void;
+  useUserProfile: boolean;
+  setUseUserProfile: (enabled: boolean) => void;
   locationError: string | null;
   setMode: (mode: AppMode) => void;
   currentMode: AppMode;
@@ -59,6 +63,8 @@ const Header: React.FC<HeaderProps> = ({
   useKnowledgeBase, setUseKnowledgeBase,
   useSymptomChecker, setUseSymptomChecker,
   useMedicationReminder, setUseMedicationReminder,
+  useMedicationScheduler, setUseMedicationScheduler,
+  useUserProfile, setUseUserProfile,
   locationError,
   setMode,
   currentMode,
@@ -85,6 +91,7 @@ const Header: React.FC<HeaderProps> = ({
         <button
           onClick={() => setSidebarIsOpen(!sidebarIsOpen)}
           className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 lg:hidden"
+          aria-label="Toggle sidebar"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -98,6 +105,7 @@ const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onSosClick}
           title={t('tooltipSos')}
+          aria-label={t('tooltipSos')}
           className="px-4 py-2 rounded-full bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors shadow-md flex items-center"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
@@ -122,6 +130,12 @@ const Header: React.FC<HeaderProps> = ({
               className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${currentMode === 'hub' ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 shadow' : 'text-gray-600 dark:text-gray-300'}`}
             >
               {t('hub')}
+            </button>
+            <button
+              onClick={() => setMode('profile')}
+              className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${currentMode === 'profile' ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 shadow' : 'text-gray-600 dark:text-gray-300'}`}
+            >
+              {t('profile')}
             </button>
              <button
               onClick={() => setMode('dashboard')}
@@ -151,12 +165,15 @@ const Header: React.FC<HeaderProps> = ({
           useKnowledgeBase={useKnowledgeBase} setUseKnowledgeBase={setUseKnowledgeBase}
           useSymptomChecker={useSymptomChecker} setUseSymptomChecker={setUseSymptomChecker}
           useMedicationReminder={useMedicationReminder} setUseMedicationReminder={setUseMedicationReminder}
+          useMedicationScheduler={useMedicationScheduler} setUseMedicationScheduler={setUseMedicationScheduler}
+          useUserProfile={useUserProfile} setUseUserProfile={setUseUserProfile}
           locationError={locationError}
         />
         
         <button
           onClick={onPersonaClick}
           title={t('tooltipPersona')}
+          aria-label={t('tooltipPersona')}
           className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -167,6 +184,7 @@ const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onShareConversation}
           title="Share Conversation"
+          aria-label="Share Conversation"
           disabled={isShareDisabled}
           className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -178,6 +196,7 @@ const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onExportConversation}
           title={t('tooltipExport')}
+          aria-label={t('tooltipExport')}
           disabled={isExportDisabled}
           className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -190,6 +209,7 @@ const Header: React.FC<HeaderProps> = ({
           <button
             onClick={() => setIsTtsEnabled(!isTtsEnabled)}
             title={isTtsEnabled ? t('tooltipTtsOn') : t('tooltipTtsOff')}
+            aria-label={isTtsEnabled ? t('tooltipTtsOn') : t('tooltipTtsOff')}
             className={`p-2 rounded-full transition-colors ${isTtsEnabled ? 'bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
             {isTtsEnabled ? (
@@ -204,6 +224,7 @@ const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onToggleVoiceCommand}
               title={isVoiceCommandListening ? t('tooltipVoiceOn') : t('tooltipVoiceOff')}
+              aria-label={isVoiceCommandListening ? t('tooltipVoiceOn') : t('tooltipVoiceOff')}
               className={`p-2 rounded-full transition-colors ${isVoiceCommandListening ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 animate-pulse' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -215,16 +236,18 @@ const Header: React.FC<HeaderProps> = ({
         <button
           onClick={toggleLanguage}
           title={t('tooltipLanguage')}
+          aria-label={t('tooltipLanguage')}
           className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2h10a2 2 0 002-2v-1a2 2 0 012-2h1.945M7.707 4.5l.286-.42a.5.5 0 01.854 0l.286.42a.5.5 0 00.387.218l.447.039a.5.5 0 01.47.69l-.16.425a.5.5 0 00.16.533l.362.302a.5.5 0 010 .854l-.362.302a.5.5 0 00-.16.533l.16.425a.5.5 0 01-.47.69l-.447.039a.5.5 0 00-.387.218l-.286.42a.5.5 0 01-.854 0l-.286-.42a.5.5 0 00-.387-.218l-.447-.039a.5.5 0 01-.47-.69l.16-.425a.5.5 0 00-.16-.533L5.43 12.5a.5.5 0 010-.854l.362-.302a.5.5 0 00.16-.533l-.16-.425a.5.5 0 01.47-.69l.447-.039a.5.5 0 00.387-.218zM12 21a9 9 0 100-18 9 9 0 000 18z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2h10a2 2 0 002-2v-1a2 2 0 012-2h1.945M7.707 4.5l.286-.42a.5.5 0 01.854 0l.286.42a.5.5 0 00.387.218l.447.039a.5.5 0 01.47.69l-.16.425a.5.5 0 00.16.533l.362.302a.5.5 0 010 .854l-.362.302a.5.5 0 00-.16.533l.16.425a.5.5 0 01-.47.69l-.447.039a.5.5 0 00-.387.218l-.286.42a.5.5 0 01-.854 0l-.286-.42a.5.5 0 00-.387-.218l-.447-.039a.5.5 0 01-.47-.69l.16-.425a.5.5 0 00-.16-.533L5.43 12.5a.5.5 0 010-.854l.362-.302a.5.5 0 00.16-.533l-.16-.425a.5.5 0 01.47-.69l.447.039a.5.5 0 00.387-.218zM12 21a9 9 0 100-18 9 9 0 000 18z" />
             </svg>
         </button>
 
         <button
           onClick={toggleTheme}
           title={t('tooltipTheme')}
+          aria-label={t('tooltipTheme')}
           className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

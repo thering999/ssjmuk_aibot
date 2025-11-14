@@ -30,8 +30,17 @@ const handleApiError = (res, error) => {
 app.post('/api/generate-content', async (req, res) => {
   try {
     const { model, contents, config, toolConfig } = req.body;
-    const response = await ai.models.generateContent({ model, contents, config, toolConfig });
-    res.json(response);
+    const result = await ai.models.generateContent({ model, contents, config, toolConfig });
+    
+    // IMPORTANT: Manually construct a plain JSON object to send back.
+    // This ensures getters like .text are resolved before serialization.
+    const responsePayload = {
+      text: result.text,
+      candidates: result.candidates,
+      promptFeedback: result.promptFeedback,
+      functionCalls: result.functionCalls,
+    };
+    res.json(responsePayload);
   } catch (error) {
     handleApiError(res, error);
   }
@@ -47,7 +56,13 @@ app.post('/api/generate-content-stream', async (req, res) => {
     
     for await (const chunk of stream) {
         // Each chunk is a JSON object. We stringify it and send it with a newline delimiter.
-        res.write(JSON.stringify(chunk) + '\n');
+        // Resolve getters before stringifying to ensure data is sent correctly.
+        const chunkPayload = {
+          text: chunk.text,
+          candidates: chunk.candidates,
+          functionCalls: chunk.functionCalls,
+        };
+        res.write(JSON.stringify(chunkPayload) + '\n');
     }
     res.end();
   } catch (error) {

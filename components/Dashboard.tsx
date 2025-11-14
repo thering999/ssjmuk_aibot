@@ -2,9 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
 import { getHealthRecords, deleteHealthRecord } from '../services/healthDashboardService';
-import type { HealthRecord, AnalyzedMetric } from '../types';
+import { getUserProfile, updateUserProfile } from '../services/firebase';
+import type { HealthRecord, AnalyzedMetric, UserProfile, MedicationSchedule } from '../types';
 import type { TFunction } from 'i18next';
 import { Line } from 'react-chartjs-2';
+import LoadingIndicator from './LoadingIndicator';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,6 +29,10 @@ ChartJS.register(
   Tooltip,
   Legend
 );
+
+// This component is currently not used due to the shift to a proxy.
+// It remains for potential future local/client-side summary features.
+const AIHealthSummary: React.FC<{ records: HealthRecord[]; t: TFunction }> = ({ records, t }) => { return null };
 
 const StatusIndicator: React.FC<{ status: AnalyzedMetric['status']; t: TFunction }> = ({ status, t }) => {
     const statusMap = {
@@ -268,25 +274,65 @@ const HealthRecordCard: React.FC<{ record: HealthRecord; onDelete: (id: string) 
     );
 };
 
+const MedicationScheduleView: React.FC<{ 
+    schedules: MedicationSchedule[]; 
+    onDelete: (id: string) => void;
+    t: TFunction 
+}> = ({ schedules, onDelete, t }) => {
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4">{t('dashboardMedicationScheduleTitle')}</h3>
+            {schedules.length === 0 ? (
+                <p className="text-sm text-center text-gray-500 dark:text-gray-400 py-4">No medication schedules set.</p>
+            ) : (
+                <div className="space-y-3">
+                    {schedules.map(schedule => (
+                        <div key={schedule.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg flex items-start justify-between">
+                            <div className="flex-1">
+                                <p className="font-bold text-gray-800 dark:text-gray-100">{schedule.medication}</p>
+                                <div className="text-sm text-gray-600 dark:text-gray-300 mt-1 space-y-1">
+                                    <p><span className="font-semibold">{t('dashboardMedicationScheduleDosage')}:</span> {schedule.dosage || 'N/A'}</p>
+                                    <p><span className="font-semibold">{t('dashboardMedicationScheduleFrequency')}:</span> {schedule.frequency}</p>
+                                    <p><span className="font-semibold">{t('dashboardMedicationScheduleTime')}:</span> {schedule.times.join(', ')}</p>
+                                    {schedule.endsAt && <p><span className="font-semibold">{t('dashboardMedicationScheduleEnds')}:</span> {new Date(schedule.endsAt).toLocaleDateString()}</p>}
+                                </div>
+                            </div>
+                            <button onClick={() => onDelete(schedule.id)} className="p-1.5 rounded-full text-gray-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40">
+                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [records, setRecords] = useState<HealthRecord[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRecords = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!user) {
         setRecords([]);
+        setProfile(null);
         setIsLoading(false);
         return;
     };
     setIsLoading(true);
     setError(null);
     try {
-      const userRecords = await getHealthRecords(user.uid);
+      const [userRecords, userProfile] = await Promise.all([
+          getHealthRecords(user.uid),
+          getUserProfile(user.uid)
+      ]);
       setRecords(userRecords);
+      setProfile(userProfile);
     } catch (err) {
       console.error(err);
       setError(t('dashboardError'));
@@ -296,12 +342,11 @@ const Dashboard: React.FC = () => {
   }, [user, t]);
 
   useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+    fetchData();
+  }, [fetchData]);
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteRecord = async (id: string) => {
     if (!user || !window.confirm(t('dashboardDeleteConfirm'))) return;
-
     try {
         await deleteHealthRecord(user.uid, id);
         setRecords(prev => prev.filter(rec => rec.id !== id));
@@ -311,9 +356,21 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteSchedule = async (id: string) => {
+      if (!user || !profile || !window.confirm(t('dashboardMedicationScheduleDeleteConfirm'))) return;
+      try {
+          const updatedSchedules = profile.medicationSchedules?.filter(s => s.id !== id) || [];
+          await updateUserProfile(user.uid, { medicationSchedules: updatedSchedules });
+          setProfile(prev => prev ? { ...prev, medicationSchedules: updatedSchedules } : null);
+      } catch (err) {
+          console.error("Failed to delete schedule:", err);
+          setError("Failed to delete schedule.");
+      }
+  };
+
   const renderContent = () => {
       if (isLoading) {
-          return <div className="text-center text-gray-500 dark:text-gray-400">{t('dashboardLoading')}</div>;
+          return <div className="flex items-center justify-center py-10"><LoadingIndicator className="h-8 w-8 text-teal-600" /> <span className="ml-3 text-gray-500 dark:text-gray-400">{t('dashboardLoading')}</span></div>;
       }
       if (error) {
           return <div className="text-center text-red-500 dark:text-red-400">{error}</div>;
@@ -321,7 +378,7 @@ const Dashboard: React.FC = () => {
       if (!user) {
           return <div className="text-center text-gray-500 dark:text-gray-400">{t('dashboardSaveDisabledTooltip')}</div>
       }
-      if (records.length === 0) {
+      if (records.length === 0 && (!profile?.medicationSchedules || profile.medicationSchedules.length === 0)) {
           return (
               <div className="text-center py-10 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                   <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -332,10 +389,11 @@ const Dashboard: React.FC = () => {
       }
       return (
           <div className="space-y-6">
+              {profile?.medicationSchedules && <MedicationScheduleView schedules={profile.medicationSchedules} onDelete={handleDeleteSchedule} t={t} />}
               <SummaryCards latestRecord={records[0]} t={t} />
               <HealthTrendChart records={records} t={t} />
               {records.map(record => (
-                  <HealthRecordCard key={record.id} record={record} onDelete={handleDelete} t={t} />
+                  <HealthRecordCard key={record.id} record={record} onDelete={handleDeleteRecord} t={t} />
               ))}
           </div>
       );

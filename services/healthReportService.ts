@@ -3,11 +3,22 @@ import { ai } from "./geminiService";
 import type { AttachedFile, HealthReportAnalysis } from '../types';
 
 /**
- * Safely extracts text from a Gemini API response object.
+ * Safely extracts and concatenates text from a Gemini API response object,
+ * avoiding the `.text` getter to prevent console warnings about non-text parts.
  */
 function extractText(response: GenerateContentResponse): string {
-    // @google/genai-fix: Use the `.text` property for direct text access.
-    return response.text;
+    let text = '';
+    if (response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        if (candidate.content && candidate.content.parts) {
+            for (const part of candidate.content.parts) {
+                if (part.text) {
+                    text += part.text;
+                }
+            }
+        }
+    }
+    return text;
 }
 
 const responseSchema = {
