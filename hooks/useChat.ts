@@ -34,12 +34,14 @@ export type UseChatOptions = {
     useMedicationReminder: boolean;
     useMedicationScheduler: boolean;
     useUserProfile: boolean;
+    useAppointmentBooking: boolean;
+    useIsanDialect: boolean;
     user: User | null;
     t: (key: string, options?: any) => any;
 }
 
 export const useChat = (options: UseChatOptions) => {
-    const { model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, user, t } = options;
+    const { model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, useAppointmentBooking, useIsanDialect, user, t } = options;
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const [isFetching, setIsFetching] = useState(true);
@@ -233,6 +235,8 @@ export const useChat = (options: UseChatOptions) => {
                     useMedicationReminder,
                     useMedicationScheduler,
                     useUserProfile,
+                    useAppointmentBooking,
+                    useIsanDialect,
                     systemInstructionText: conv.systemInstruction,
                     knowledgeContext,
                     userProfile, // from state
@@ -360,7 +364,7 @@ export const useChat = (options: UseChatOptions) => {
         }
     }, [
         activeConversationId, conversations, addMessage, updateMessage, model,
-        useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, user, t, userProfile
+        useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, useAppointmentBooking, useIsanDialect, user, t, userProfile
     ]);
 
     const retryMessage = (failedBotMessageId: string) => {
@@ -491,5 +495,6 @@ export const useChat = (options: UseChatOptions) => {
         selectConversation,
         updateSystemInstruction,
         isFetching,
+        userProfile,
     };
 };

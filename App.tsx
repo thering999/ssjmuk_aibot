@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
-import type { AttachedFile, ModelType, Geolocation, Conversation, EmergencyResult, LiveConversationHandle, HealthReportAnalysis } from './types';
+import type { AttachedFile, ModelType, Geolocation, Conversation, EmergencyResult, LiveConversationHandle, HealthReportAnalysis, UserProfile } from './types';
 import { useTheme } from './hooks/useTheme';
 import { useChat, UseChatOptions } from './hooks/useChat'; // Import options type
 import { useTranslation } from './hooks/useTranslation';
@@ -21,18 +22,26 @@ import Toast from './components/Toast';
 import ShareModal from './components/ShareModal';
 import SharedConversationView from './components/SharedConversationView';
 import LoadingIndicator from './components/LoadingIndicator';
+import ChatInterface from './components/ChatInterface';
+import ScreenFlashlight from './components/ScreenFlashlight';
+import ElderlyModeView from './components/ElderlyModeView';
+import TelemedicineCall from './components/TelemedicineCall';
 
 // Lazy load components for each mode
-const ChatInterface = React.lazy(() => import('./components/ChatInterface'));
 const LiveConversation = React.lazy(() => import('./components/LiveConversation'));
 const HealthReportAnalyzer = React.lazy(() => import('./components/HealthReportAnalyzer'));
 const HealthHub = React.lazy(() => import('./components/HealthHub'));
 const Dashboard = React.lazy(() => import('./components/Dashboard'));
 const Profile = React.lazy(() => import('./components/Profile')); // Lazy load Profile
 const CommunityHealthMap = React.lazy(() => import('./components/CommunityHealthMap'));
+const NutritionTracker = React.lazy(() => import('./components/NutritionTracker'));
+const WellnessCenter = React.lazy(() => import('./components/WellnessCenter'));
+const SmartPharmacy = React.lazy(() => import('./components/SmartPharmacy'));
+const FamilyConnect = React.lazy(() => import('./components/FamilyConnect')); // Lazy load FamilyConnect
+const SkinAnalysis = React.lazy(() => import('./components/SkinAnalysis'));
+const HealthPlanner = React.lazy(() => import('./components/HealthPlanner')); // Lazy load Planner
 
-
-export type AppMode = 'chat' | 'live' | 'analyzer' | 'hub' | 'dashboard' | 'map' | 'profile';
+export type AppMode = 'chat' | 'live' | 'analyzer' | 'hub' | 'dashboard' | 'map' | 'profile' | 'nutrition' | 'wellness' | 'pharmacy' | 'family' | 'skin' | 'planner';
 
 const App: React.FC = () => {
   const { t, language, setLanguage } = useTranslation();
@@ -50,6 +59,9 @@ const App: React.FC = () => {
   const [useMedicationReminder, setUseMedicationReminder] = usePersistentState('useMedicationReminder', true);
   const [useMedicationScheduler, setUseMedicationScheduler] = usePersistentState('useMedicationScheduler', true);
   const [useUserProfile, setUseUserProfile] = usePersistentState('useUserProfile', true); // Add AI Memory toggle state
+  const [useAppointmentBooking, setUseAppointmentBooking] = usePersistentState('useAppointmentBooking', true);
+  const [useIsanDialect, setUseIsanDialect] = usePersistentState('useIsanDialect', false);
+  const [isElderlyMode, setIsElderlyMode] = usePersistentState('isElderlyMode', false);
   
   // App state
   const [isTtsEnabled, setIsTtsEnabled] = usePersistentState('isTtsEnabled', false);
@@ -74,13 +86,15 @@ const App: React.FC = () => {
   const [isEmergencyLoading, setIsEmergencyLoading] = useState(false);
   const [emergencyError, setEmergencyError] = useState<string | null>(null);
   const [currentUserLocationForSos, setCurrentUserLocationForSos] = useState<Geolocation | null>(null);
+  const [isFlashlightOn, setIsFlashlightOn] = useState(false);
+  const [isTelemedActive, setIsTelemedActive] = useState(false);
 
   const isTtsSupported = checkTtsSupport();
 
   // Consolidate chat options
   const chatOptions: UseChatOptions = useMemo(() => ({
-    model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, user, t
-  }), [model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, user, t]);
+    model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, useAppointmentBooking, useIsanDialect, user, t
+  }), [model, useSearch, useMaps, location, isTtsEnabled, useClinicFinder, useKnowledgeBase, useSymptomChecker, useMedicationReminder, useMedicationScheduler, useUserProfile, useAppointmentBooking, useIsanDialect, user, t]);
 
   const {
     conversations,
@@ -96,6 +110,7 @@ const App: React.FC = () => {
     selectConversation,
     updateSystemInstruction,
     isFetching,
+    userProfile,
   } = useChat(chatOptions);
 
    useEffect(() => {
@@ -348,113 +363,169 @@ const App: React.FC = () => {
         return <CommunityHealthMap userLocation={location} locationError={locationError} />;
       case 'profile':
         return <Profile />;
+      case 'nutrition':
+        return <NutritionTracker />;
+      case 'wellness':
+        return <WellnessCenter />;
+      case 'pharmacy':
+        return <SmartPharmacy />;
+      case 'family':
+        return <FamilyConnect />;
+      case 'skin':
+        return <SkinAnalysis />;
+      case 'planner':
+        return <HealthPlanner />;
       default:
         return null;
     }
   }
 
+  const elderlyModeCallFamily = () => {
+    if (userProfile?.emergencyContact?.phone) {
+      window.open(`tel:${userProfile.emergencyContact.phone}`);
+    } else {
+      showToast("No emergency contact saved.");
+    }
+  }
 
   return (
-    <div className={`flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans antialiased overflow-hidden ${theme}`}>
-      <Sidebar
-        conversations={conversations}
-        activeConversationId={activeConversation?.id || null}
-        onNewChat={createNewChat}
-        onSelectChat={selectConversation}
-        onDeleteChat={deleteConversation}
-        onRenameChat={renameConversation}
-        isOpen={sidebarIsOpen}
-        setIsOpen={setSidebarIsOpen}
-        isFetching={isFetching}
-        onShowToast={showToast}
-        currentMode={currentMode}
-      />
-      <main className="flex-1 flex flex-col h-full">
-        <Header
-          sidebarIsOpen={sidebarIsOpen}
-          setSidebarIsOpen={setSidebarIsOpen}
-          toggleTheme={toggleTheme}
-          isTtsEnabled={isTtsEnabled}
-          setIsTtsEnabled={setIsTtsEnabled}
-          isTtsSupported={isTtsSupported}
-          onPersonaClick={() => setIsPersonaModalOpen(true)}
-          model={model} setModel={setModel}
-          useSearch={useSearch} setUseSearch={setUseSearch}
-          useMaps={useMaps} setUseMaps={setUseMaps}
-          useClinicFinder={useClinicFinder} setUseClinicFinder={setUseClinicFinder}
-          useKnowledgeBase={useKnowledgeBase} setUseKnowledgeBase={setUseKnowledgeBase}
-          useSymptomChecker={useSymptomChecker} setUseSymptomChecker={setUseSymptomChecker}
-          useMedicationReminder={useMedicationReminder} setUseMedicationReminder={setUseMedicationReminder}
-          useMedicationScheduler={useMedicationScheduler} setUseMedicationScheduler={setUseMedicationScheduler}
-          useUserProfile={useUserProfile} setUseUserProfile={setUseUserProfile}
-          locationError={locationError}
-          setMode={setCurrentMode}
-          currentMode={currentMode}
-          isVoiceCommandListening={isVoiceCommandListening}
-          onToggleVoiceCommand={handleToggleVoiceCommand}
-          isVoiceCommandSupported={isCommandSupported}
-          currentLanguage={language}
-          setLanguage={setLanguage}
-          onExportConversation={handleExportConversation}
-          isExportDisabled={currentMode !== 'chat' || !activeConversation || activeConversation.messages.length <= 1}
-          onShareConversation={handleShareConversation}
-          isShareDisabled={currentMode !== 'chat' || !user || !activeConversation || activeConversation.messages.length <= 1}
-          onSosClick={handleSosClick}
-        />
-
-        <Suspense fallback={<div className="flex-1 flex items-center justify-center"><LoadingIndicator className="h-8 w-8 text-teal-600" /></div>}>
-            {renderCurrentMode()}
-        </Suspense>
-      </main>
+    <>
+      {isTelemedActive && <TelemedicineCall onEndCall={() => setIsTelemedActive(false)} />}
       
-      <PersonaModal
-        isOpen={isPersonaModalOpen}
-        onClose={() => setIsPersonaModalOpen(false)}
-        onSave={handlePersonaSave}
-        currentInstruction={activeConversation?.systemInstruction || ''}
-      />
+      {isElderlyMode ? (
+        <>
+          <ElderlyModeView 
+            onExit={() => setIsElderlyMode(false)}
+            onSos={handleSosClick}
+            onFlashlight={() => setIsFlashlightOn(!isFlashlightOn)}
+            onCallFamily={elderlyModeCallFamily}
+            onTalkToDoctor={() => setIsTelemedActive(true)}
+          />
+          <EmergencyModal
+            isOpen={isEmergencyModalOpen}
+            onClose={() => setIsEmergencyModalOpen(false)}
+            isLoading={isEmergencyLoading}
+            error={emergencyError}
+            result={emergencyResult}
+            userLocation={currentUserLocationForSos}
+            emergencyContact={userProfile?.emergencyContact}
+            onShowToast={showToast}
+          />
+          <ScreenFlashlight isOpen={isFlashlightOn} onClose={() => setIsFlashlightOn(false)} />
+          {toastMessage && (
+            <Toast message={toastMessage} onClose={() => setToastMessage('')} />
+          )}
+        </>
+      ) : (
+        <div className={`flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans antialiased overflow-hidden ${theme}`}>
+          <Sidebar
+            conversations={conversations}
+            activeConversationId={activeConversation?.id || null}
+            onNewChat={createNewChat}
+            onSelectChat={selectConversation}
+            onDeleteChat={deleteConversation}
+            onRenameChat={renameConversation}
+            isOpen={sidebarIsOpen}
+            setIsOpen={setSidebarIsOpen}
+            isFetching={isFetching}
+            onShowToast={showToast}
+            currentMode={currentMode}
+          />
+          <main className="flex-1 flex flex-col h-full">
+            <Header
+              sidebarIsOpen={sidebarIsOpen}
+              setSidebarIsOpen={setSidebarIsOpen}
+              toggleTheme={toggleTheme}
+              isTtsEnabled={isTtsEnabled}
+              setIsTtsEnabled={setIsTtsEnabled}
+              isTtsSupported={isTtsSupported}
+              onPersonaClick={() => setIsPersonaModalOpen(true)}
+              model={model} setModel={setModel}
+              useSearch={useSearch} setUseSearch={setUseSearch}
+              useMaps={useMaps} setUseMaps={setUseMaps}
+              useClinicFinder={useClinicFinder} setUseClinicFinder={setUseClinicFinder}
+              useKnowledgeBase={useKnowledgeBase} setUseKnowledgeBase={setUseKnowledgeBase}
+              useSymptomChecker={useSymptomChecker} setUseSymptomChecker={setUseSymptomChecker}
+              useMedicationReminder={useMedicationReminder} setUseMedicationReminder={setUseMedicationReminder}
+              useMedicationScheduler={useMedicationScheduler} setUseMedicationScheduler={setUseMedicationScheduler}
+              useUserProfile={useUserProfile} setUseUserProfile={setUseUserProfile}
+              useAppointmentBooking={useAppointmentBooking} setUseAppointmentBooking={setUseAppointmentBooking}
+              useIsanDialect={useIsanDialect} setUseIsanDialect={setUseIsanDialect}
+              locationError={locationError}
+              setMode={setCurrentMode}
+              currentMode={currentMode}
+              isVoiceCommandListening={isVoiceCommandListening}
+              onToggleVoiceCommand={handleToggleVoiceCommand}
+              isVoiceCommandSupported={isCommandSupported}
+              currentLanguage={language}
+              setLanguage={setLanguage}
+              onExportConversation={handleExportConversation}
+              isExportDisabled={currentMode !== 'chat' || !activeConversation || activeConversation.messages.length <= 1}
+              onShareConversation={handleShareConversation}
+              isShareDisabled={currentMode !== 'chat' || !user || !activeConversation || activeConversation.messages.length <= 1}
+              onSosClick={handleSosClick}
+              toggleFlashlight={() => setIsFlashlightOn(!isFlashlightOn)}
+              toggleElderlyMode={() => setIsElderlyMode(!isElderlyMode)}
+            />
 
-      <ApiKeyNoticeModal 
-        isOpen={isApiKeyModalOpen}
-        onClose={() => setIsApiKeyModalOpen(false)}
-        onConfirm={async () => {
-          if ((window as any).aistudio) {
-              await (window as any).aistudio.openSelectKey();
-              // Assume success and let the user retry the action.
-              setIsApiKeyModalOpen(false);
-              showToast("API Key selected. Please try generating the video again.");
-          }
-        }}
-      />
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center"><LoadingIndicator className="h-8 w-8 text-teal-600" /></div>}>
+                {renderCurrentMode()}
+            </Suspense>
+          </main>
+          
+          <PersonaModal
+            isOpen={isPersonaModalOpen}
+            onClose={() => setIsPersonaModalOpen(false)}
+            onSave={handlePersonaSave}
+            currentInstruction={activeConversation?.systemInstruction || ''}
+          />
 
-      <ConfirmationModal
-        isOpen={isDocConfirmOpen}
-        onClose={() => setIsDocConfirmOpen(false)}
-        onConfirm={confirmStartChatWithDoc}
-        title={t('docConfirmTitle')}
-        message={t('docConfirmMessage', { fileName: docToConfirm?.name || 'this document' })}
-      />
-      
-      <EmergencyModal
-        isOpen={isEmergencyModalOpen}
-        onClose={() => setIsEmergencyModalOpen(false)}
-        isLoading={isEmergencyLoading}
-        error={emergencyError}
-        result={emergencyResult}
-        userLocation={currentUserLocationForSos}
-      />
+          <ApiKeyNoticeModal 
+            isOpen={isApiKeyModalOpen}
+            onClose={() => setIsApiKeyModalOpen(false)}
+            onConfirm={async () => {
+              if ((window as any).aistudio) {
+                  await (window as any).aistudio.openSelectKey();
+                  setIsApiKeyModalOpen(false);
+                  showToast("API Key selected. Please try generating the video again.");
+              }
+            }}
+          />
 
-      <ShareModal 
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        isLoading={isSharing}
-        shareLink={shareLink}
-      />
-      
-      {toastMessage && (
-          <Toast message={toastMessage} onClose={() => setToastMessage('')} />
+          <ConfirmationModal
+            isOpen={isDocConfirmOpen}
+            onClose={() => setIsDocConfirmOpen(false)}
+            onConfirm={confirmStartChatWithDoc}
+            title={t('docConfirmTitle')}
+            message={t('docConfirmMessage', { fileName: docToConfirm?.name || 'this document' })}
+          />
+          
+          <EmergencyModal
+            isOpen={isEmergencyModalOpen}
+            onClose={() => setIsEmergencyModalOpen(false)}
+            isLoading={isEmergencyLoading}
+            error={emergencyError}
+            result={emergencyResult}
+            userLocation={currentUserLocationForSos}
+            emergencyContact={userProfile?.emergencyContact}
+            onShowToast={showToast}
+          />
+
+          <ShareModal 
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            isLoading={isSharing}
+            shareLink={shareLink}
+          />
+
+          <ScreenFlashlight isOpen={isFlashlightOn} onClose={() => setIsFlashlightOn(false)} />
+          
+          {toastMessage && (
+              <Toast message={toastMessage} onClose={() => setToastMessage('')} />
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 };
 

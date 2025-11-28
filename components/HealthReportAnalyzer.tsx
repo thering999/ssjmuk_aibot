@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
@@ -47,7 +48,6 @@ const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast
 
         if (!selectedFile) return;
 
-        // Clear previous state on new file selection
         setFile(null);
         setAnalysis(null);
         setError(null);
@@ -66,7 +66,7 @@ const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast
             const processedFiles = await processFiles(
                 [selectedFile],
                 SUPPORTED_IMAGE_MIME_TYPES,
-                () => {} // Error is already handled above, so this is a no-op
+                () => {} 
             );
             if (processedFiles.length > 0) {
                 setFile(processedFiles[0]);
@@ -112,10 +112,10 @@ const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast
     const handleSave = async () => {
         if (!analysis || !user) return;
         
-        const defaultTitle = `Report - ${new Date().toLocaleDateString()}`;
+        const defaultTitle = analysis.reportType || `Report - ${new Date().toLocaleDateString()}`;
         const title = window.prompt(t('dashboardSavePrompt'), defaultTitle);
 
-        if (title) { // Proceed if user clicks OK, even with empty string
+        if (title) { 
             setIsSaving(true);
             try {
                 await saveHealthRecord(user.uid, {
@@ -222,10 +222,31 @@ const HealthReportAnalyzer: React.FC<HealthReportAnalyzerProps> = ({ onShowToast
                                 {error && <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-md text-sm">{error}</div>}
                                 {analysis ? (
                                     <div className="space-y-4">
+                                        {analysis.reportType && (
+                                            <div className="inline-block px-3 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 rounded-full text-sm font-bold">
+                                                {analysis.reportType}
+                                            </div>
+                                        )}
+
                                         <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                                             <h4 className="font-semibold text-gray-800 dark:text-gray-100">{t('analysisSummary')}</h4>
                                             <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{analysis.summary}</p>
                                         </div>
+
+                                        {analysis.lifestyleTips && analysis.lifestyleTips.length > 0 && (
+                                            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/50">
+                                                <div className="flex items-center mb-2">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                    <h4 className="font-semibold text-green-800 dark:text-green-200">Health & Lifestyle Tips</h4>
+                                                </div>
+                                                <ul className="list-disc list-inside text-sm text-green-800 dark:text-green-300 space-y-1 pl-1">
+                                                    {analysis.lifestyleTips.map((tip, index) => (
+                                                        <li key={index}>{tip}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
                                         {analysis.keyFindings.length > 0 && (
                                             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                                                 <h4 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">{t('analysisKeyFindings')}</h4>

@@ -40,6 +40,17 @@ const Profile: React.FC = () => {
         }
     };
     
+    const handleEmergencyContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target; // name is 'name' or 'phone'
+        setProfile(prev => ({
+            ...prev,
+            emergencyContact: {
+                ...(prev.emergencyContact || { name: '', phone: '' }),
+                [name]: value
+            }
+        }));
+    };
+    
     // Helper to join array fields for display in input
     const getArrayValue = (field?: string[]) => field?.join(', ') || '';
 
@@ -130,6 +141,20 @@ const Profile: React.FC = () => {
                                 <label htmlFor="healthGoals" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Health Goals</label>
                                 <input type="text" name="healthGoals" id="healthGoals" placeholder="e.g., lose 5kg, run a 5k" value={getArrayValue(profile.healthGoals)} onChange={handleInputChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm bg-gray-50 dark:bg-gray-700" />
                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Separate with commas</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h2 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-700 pb-2 mb-4">{t('profileSectionEmergency')}</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="econtact-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('profileEmergencyName')}</label>
+                                <input type="text" name="name" id="econtact-name" value={profile.emergencyContact?.name || ''} onChange={handleEmergencyContactChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm bg-gray-50 dark:bg-gray-700" />
+                            </div>
+                             <div>
+                                <label htmlFor="econtact-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('profileEmergencyPhone')}</label>
+                                <input type="tel" name="phone" id="econtact-phone" value={profile.emergencyContact?.phone || ''} onChange={handleEmergencyContactChange} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm bg-gray-50 dark:bg-gray-700" />
                             </div>
                         </div>
                     </div>

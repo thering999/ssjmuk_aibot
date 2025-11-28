@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Conversation } from '../types';
 import { AppMode } from '../App';
@@ -79,12 +80,16 @@ const Sidebar: React.FC<SidebarProps> = ({
       conv.title.toLowerCase().includes(searchQuery.toLowerCase())
     ), [conversations, searchQuery]);
 
-  const sidebarClasses = isOpen ? "translate-x-0" : "-translate-x-full";
-
   return (
     <>
       <div className={`fixed inset-0 z-20 bg-black/30 lg:hidden ${isOpen ? 'block' : 'hidden'}`} onClick={() => setIsOpen(false)}></div>
-      <aside className={`absolute lg:relative z-30 flex flex-col w-64 bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-full transition-transform duration-300 ease-in-out ${sidebarClasses}`}>
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-30 
+        flex flex-col w-64 h-full 
+        bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 
+        transition-all duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0 lg:ml-0' : '-translate-x-full lg:-ml-64'}
+      `}>
         <div className="p-2 border-b border-gray-200 dark:border-gray-700 space-y-2">
             <button
                 onClick={onNewChat}

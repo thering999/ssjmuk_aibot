@@ -1,4 +1,6 @@
-import { parse, isFuture, differenceInMilliseconds } from 'date-fns';
+// @google/genai-fix: Updated import for `parse` to be compatible with date-fns v2+
+import { isFuture, differenceInMilliseconds } from 'date-fns';
+import { parse } from 'date-fns/parse';
 
 /**
  * Parses a time string (like "8:00 AM", "tomorrow at 9pm") and calculates the delay in milliseconds.

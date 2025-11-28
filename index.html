@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -19,6 +20,15 @@
   }
   .fade-in {
     animation: fadeIn 0.4s ease-out forwards;
+  }
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+      display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
   }
 </style>
 <script type="importmap">
@@ -43,7 +53,8 @@
     "chart.js": "https://aistudiocdn.com/chart.js@^4.5.1",
     "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0",
     "vite": "https://aistudiocdn.com/vite@^7.2.2",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0"
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "date-fns/": "https://aistudiocdn.com/date-fns@^4.1.0/"
   }
 }
 </script>

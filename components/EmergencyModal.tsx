@@ -1,7 +1,5 @@
-
-
-import React from 'react';
-import type { EmergencyResult, Geolocation } from '../types';
+import React, { useState } from 'react';
+import type { EmergencyResult, Geolocation, UserProfile } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
 import LoadingIndicator from './LoadingIndicator';
 
@@ -12,16 +10,31 @@ interface EmergencyModalProps {
   error: string | null;
   result: EmergencyResult | null;
   userLocation: Geolocation | null;
+  emergencyContact?: UserProfile['emergencyContact'];
+  onShowToast: (message: string) => void;
 }
 
-const EmergencyModal: React.FC<EmergencyModalProps> = ({ isOpen, onClose, isLoading, error, result, userLocation }) => {
+const EmergencyModal: React.FC<EmergencyModalProps> = ({ isOpen, onClose, isLoading, error, result, userLocation, emergencyContact, onShowToast }) => {
   const { t } = useTranslation();
+  const [isNotifying, setIsNotifying] = useState(false);
+  const [notified, setNotified] = useState(false);
 
   if (!isOpen) return null;
 
   const directionsUrl = result && userLocation
     ? `https://www.google.com/maps/dir/?api=1&origin=${userLocation.latitude},${userLocation.longitude}&destination=${encodeURIComponent(result.address)}`
     : '#';
+    
+  const handleNotify = () => {
+    if (!emergencyContact) return;
+    setIsNotifying(true);
+    // Simulate API call to send SMS/notification
+    setTimeout(() => {
+        setIsNotifying(false);
+        setNotified(true);
+        onShowToast(t('emergencyContactNotified'));
+    }, 1500);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
@@ -45,19 +58,31 @@ const EmergencyModal: React.FC<EmergencyModalProps> = ({ isOpen, onClose, isLoad
           )}
           {error && <p className="text-red-600 dark:text-red-400 text-center">{error}</p>}
           {result && (
-            <div>
-              <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">{t('foundLocationTitle')}</h3>
-              <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{result.name}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">{result.address}</p>
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400">{t('foundLocationTitle')}</h3>
+                <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{result.name}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">{result.address}</p>
+              </div>
               <a 
                 href={directionsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
               >
                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 {t('getDirections')}
               </a>
+              {emergencyContact?.name && (
+                <button 
+                  onClick={handleNotify}
+                  disabled={isNotifying || notified}
+                  className="w-full flex items-center justify-center px-4 py-2 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors disabled:bg-gray-400"
+                >
+                  {isNotifying && <LoadingIndicator className="h-5 w-5 mr-2 text-white" />}
+                  {notified ? t('emergencyNotified') : (isNotifying ? t('emergencyNotifying') : t('emergencyNotifyContact', { name: emergencyContact.name }))}
+                </button>
+              )}
             </div>
           )}
         </div>

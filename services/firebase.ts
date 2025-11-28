@@ -1,42 +1,42 @@
-// --- Firebase Service Imports ---
-// Service modules (like auth, firestore) are imported BEFORE the core 'app' module.
-// This ensures their components are registered via side-effects before the app is initialized.
-import {
-  getAuth,
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut,
-  GoogleAuthProvider,
-  setPersistence,
-  browserSessionPersistence,
-  type Auth,
-  type User,
+
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+// IMPORTANT: Side-effect imports must come first to ensure components are registered
+import 'firebase/auth';
+import 'firebase/firestore';
+
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged, 
+  User, 
+  Auth 
 } from 'firebase/auth';
-import {
-  getFirestore,
-  collection,
-  doc,
-  orderBy,
-  query,
-  getDocs,
-  Timestamp,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  addDoc,
-  getDoc,
-  writeBatch,
-  type Firestore,
-  serverTimestamp,
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  orderBy, 
+  Timestamp, 
+  serverTimestamp, 
+  writeBatch, 
+  Firestore,
+  increment
 } from 'firebase/firestore';
 
-// --- Firebase App Core Import ---
-import { initializeApp, getApp, getApps, type FirebaseApp } from 'firebase/app';
-
-// --- Other Imports ---
-import type { Conversation, HealthRecord, KnowledgeDocument, UserProfile } from '../types';
+import type { Conversation, HealthRecord, KnowledgeDocument, UserProfile, MealLog, MoodLog, AppointmentRecord, SleepLog } from '../types';
 import { chunkText, createEmbedding } from './embeddingService';
 
+// Export User type for use in other components
 export type { User };
 
 // --- Configuration ---
@@ -50,108 +50,132 @@ const firebaseConfig = {
   measurementId: "G-8KEMJLGT70"
 };
 
-// --- Initialization ---
+// --- Initialization State ---
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
-let provider: GoogleAuthProvider;
+let googleProvider: GoogleAuthProvider;
 
-export const isFirebaseConfigured = (): boolean => {
-    return firebaseConfig.apiKey !== "YOUR_API_KEY" && firebaseConfig.projectId !== "YOUR_PROJECT_ID";
+const isConfigured = !!(firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY");
+
+// --- Lazy Initialization Helpers ---
+const getFirebaseApp = (): FirebaseApp => {
+    if (!app) {
+        app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    }
+    return app;
 };
 
-// Initialize services directly at the module level
-if (isFirebaseConfigured()) {
-  try {
-    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    provider = new GoogleAuthProvider();
-    setPersistence(auth, browserSessionPersistence).catch(console.error);
-  } catch (error) {
-    console.error("Firebase initialization failed:", error);
-    // Services will remain undefined, and subsequent calls will be guarded.
-  }
-}
+const getFirebaseAuth = (): Auth => {
+    if (!isConfigured) throw new Error("Firebase not configured");
+    if (!auth) {
+        const firebaseApp = getFirebaseApp();
+        // Use standard getAuth. The side-effect imports at the top of this file 
+        // and in index.tsx ensure the component is registered.
+        auth = getAuth(firebaseApp);
+        googleProvider = new GoogleAuthProvider();
+    }
+    return auth;
+};
+
+const getFirebaseDb = (): Firestore => {
+    if (!isConfigured) throw new Error("Firebase not configured");
+    if (!db) {
+        const firebaseApp = getFirebaseApp();
+        db = getFirestore(firebaseApp);
+    }
+    return db;
+};
+
+// --- Exports ---
+export const isFirebaseConfigured = (): boolean => isConfigured;
 
 // --- Authentication ---
 export const onAuthChange = (callback: (user: User | null) => void) => {
-    if (!auth) {
-      console.warn("Firebase not available for onAuthChange.");
-      callback(null);
-      return () => {}; // Return an empty unsubscribe function
+    if (!isConfigured) {
+        callback(null);
+        return () => {}; 
     }
-    return onAuthStateChanged(auth, callback);
+    try {
+        const authInstance = getFirebaseAuth();
+        return onAuthStateChanged(authInstance, callback);
+    } catch (error) {
+        console.error("Error initializing auth listener:", error);
+        callback(null);
+        return () => {};
+    }
 };
 
 export const signInWithGoogle = () => {
-    if (!auth || !provider) throw new Error("Firebase Auth not initialized.");
-    return signInWithPopup(auth, provider);
+    const authInstance = getFirebaseAuth();
+    if (!googleProvider) googleProvider = new GoogleAuthProvider();
+    return signInWithPopup(authInstance, googleProvider);
 };
 
 export const signOutUser = (): Promise<void> => {
-    if (!auth) return Promise.resolve();
-    return signOut(auth);
+    if (!isConfigured) return Promise.resolve();
+    return signOut(getFirebaseAuth());
 };
 
 export const getProjectId = (): string | undefined => {
-    return isFirebaseConfigured() ? firebaseConfig.projectId : undefined;
+    return isConfigured ? firebaseConfig.projectId : undefined;
 };
 
-// Internal helper to get DB instance safely
-const getDb = (): Firestore => {
-    if (!db) throw new Error("Firestore not initialized.");
-    return db;
-}
-
-// --- Firestore Collections (internal helpers) ---
-const getConversationsCollection = (uid: string) => collection(getDb(), 'users', uid, 'conversations');
-export const getKnowledgeCollection = (uid: string) => collection(getDb(), 'users', uid, 'knowledge');
-const getSharedConversationsCollection = () => collection(getDb(), 'sharedConversations');
-const getHealthRecordsCollection = (uid: string) => collection(getDb(), 'users', uid, 'healthRecords');
-const getUserProfileDoc = (uid: string) => doc(getDb(), 'users', uid, 'profiles', 'health');
+// --- Firestore References Helpers ---
+const getConversationsRef = (uid: string) => collection(getFirebaseDb(), 'users', uid, 'conversations');
+export const getKnowledgeRef = (uid: string) => collection(getFirebaseDb(), 'users', uid, 'knowledge');
+const getSharedConversationsRef = () => collection(getFirebaseDb(), 'sharedConversations');
+const getHealthRecordsRef = (uid: string) => collection(getFirebaseDb(), 'users', uid, 'healthRecords');
+const getMealLogsRef = (uid: string) => collection(getFirebaseDb(), 'users', uid, 'mealLogs');
+const getMoodLogsRef = (uid: string) => collection(getFirebaseDb(), 'users', uid, 'moodLogs');
+const getSleepLogsRef = (uid: string) => collection(getFirebaseDb(), 'users', uid, 'sleepLogs');
+const getAppointmentsRef = (uid: string) => collection(getFirebaseDb(), 'users', uid, 'appointments');
+const getUserProfileRef = (uid: string) => doc(getFirebaseDb(), 'users', uid, 'profiles', 'health');
 
 // --- Conversation Management ---
 export const fetchConversations = async (uid: string): Promise<Conversation[]> => {
-    const conversationsRef = getConversationsCollection(uid);
-    const q = query(conversationsRef, orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(docSnap => {
+    if (!isConfigured) return [];
+    const q = query(getConversationsRef(uid), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docSnap => {
         const data = docSnap.data();
         return {
             id: docSnap.id,
             ...data,
-            createdAt: (data.createdAt as Timestamp).toMillis(),
-        } as Conversation
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
+        } as Conversation;
     });
 };
 
-export const createConversation = (uid: string, conversation: Conversation): Promise<void> => {
+export const createConversation = async (uid: string, conversation: Conversation): Promise<void> => {
+    if (!isConfigured) return;
     const { id, messages, ...restOfData } = conversation;
-    const conversationDocRef = doc(getConversationsCollection(uid), id);
-    return setDoc(conversationDocRef, {
+    const docRef = doc(getConversationsRef(uid), id);
+    await setDoc(docRef, {
         ...restOfData,
         createdAt: Timestamp.fromMillis(conversation.createdAt)
     });
 };
 
-export const updateConversation = (uid: string, id: string, updates: Partial<Conversation>): Promise<void> => {
-    const dataToUpdate: { [key: string]: any } = { ...updates };
-    if (dataToUpdate.createdAt && typeof dataToUpdate.createdAt === 'number') {
+export const updateConversation = async (uid: string, id: string, updates: Partial<Conversation>): Promise<void> => {
+    if (!isConfigured) return;
+    const dataToUpdate: any = { ...updates };
+    if (typeof dataToUpdate.createdAt === 'number') {
         dataToUpdate.createdAt = Timestamp.fromMillis(dataToUpdate.createdAt);
     }
-    const conversationDocRef = doc(getConversationsCollection(uid), id);
-    return updateDoc(conversationDocRef, dataToUpdate);
+    const docRef = doc(getConversationsRef(uid), id);
+    await updateDoc(docRef, dataToUpdate);
 };
 
-export const removeConversation = (uid: string, id: string): Promise<void> => {
-    const conversationDocRef = doc(getConversationsCollection(uid), id);
-    return deleteDoc(conversationDocRef);
+export const removeConversation = async (uid: string, id: string): Promise<void> => {
+    if (!isConfigured) return;
+    const docRef = doc(getConversationsRef(uid), id);
+    await deleteDoc(docRef);
 };
 
 export const shareConversation = async (conversation: Conversation): Promise<string> => {
-    const sharedConversationsRef = getSharedConversationsCollection();
-    const docRef = await addDoc(sharedConversationsRef, {
+    if (!isConfigured) throw new Error("Firebase not configured");
+    const docRef = await addDoc(getSharedConversationsRef(), {
         ...conversation,
         sharedAt: serverTimestamp(),
     });
@@ -159,7 +183,8 @@ export const shareConversation = async (conversation: Conversation): Promise<str
 };
 
 export const getSharedConversation = async (shareId: string): Promise<Conversation | null> => {
-    const docRef = doc(getSharedConversationsCollection(), shareId);
+    if (!isConfigured) return null;
+    const docRef = doc(getSharedConversationsRef(), shareId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         const data = docSnap.data();
@@ -167,7 +192,7 @@ export const getSharedConversation = async (shareId: string): Promise<Conversati
         return {
             ...data,
             id: docSnap.id,
-            createdAt: (data.createdAt as Timestamp).toMillis(),
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
         } as Conversation;
     }
     return null;
@@ -175,8 +200,8 @@ export const getSharedConversation = async (shareId: string): Promise<Conversati
 
 // --- User Profile Management ---
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
-    const docRef = getUserProfileDoc(uid);
-    const docSnap = await getDoc(docRef);
+    if (!isConfigured) return null;
+    const docSnap = await getDoc(getUserProfileRef(uid));
     if (docSnap.exists()) {
         return docSnap.data() as UserProfile;
     }
@@ -184,53 +209,68 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
 };
 
 export const updateUserProfile = async (uid: string, profileData: Partial<UserProfile>): Promise<{ success: boolean }> => {
-    const docRef = getUserProfileDoc(uid);
-    await setDoc(docRef, profileData, { merge: true });
+    if (!isConfigured) throw new Error("Firebase not configured");
+    await setDoc(getUserProfileRef(uid), profileData, { merge: true });
     return { success: true };
+};
+
+export const addHealthPoints = async (uid: string, points: number): Promise<void> => {
+    if (!isConfigured) return;
+    await updateDoc(getUserProfileRef(uid), {
+        healthPoints: increment(points)
+    });
+};
+
+export const deductHealthPoints = async (uid: string, points: number): Promise<void> => {
+    if (!isConfigured) return;
+    // Use a negative increment to deduct points
+    await updateDoc(getUserProfileRef(uid), {
+        healthPoints: increment(-points)
+    });
 };
 
 // --- Knowledge Base Management ---
 export const getKnowledgeDocuments = async (uid: string): Promise<KnowledgeDocument[]> => {
-    const q = query(getKnowledgeCollection(uid), orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(docSnap => {
+    if (!isConfigured) return [];
+    const q = query(getKnowledgeRef(uid), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docSnap => {
         const data = docSnap.data();
         return {
             id: docSnap.id,
             name: data.name,
             size: data.size,
-            createdAt: (data.createdAt as Timestamp).toMillis(),
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
         };
     });
 };
 
 export const uploadKnowledgeDocument = async (uid: string, docId: string, textContent: string): Promise<void> => {
+    if (!isConfigured) throw new Error("Firebase not configured");
     const chunks = chunkText(textContent);
-    
     const chunkPromises = chunks.map(async (text, index) => {
         const embedding = await createEmbedding(text);
         return { text, embedding, chunkIndex: index };
     });
-    
     const chunksWithEmbeddings = await Promise.all(chunkPromises);
     
-    const knowledgeDocRef = doc(getKnowledgeCollection(uid), docId);
-    const chunksCollectionRef = collection(knowledgeDocRef, 'chunks');
+    const docRef = doc(getKnowledgeRef(uid), docId);
+    const chunksRef = collection(docRef, 'chunks');
+    const batch = writeBatch(getFirebaseDb());
     
-    const batch = writeBatch(getDb());
     chunksWithEmbeddings.forEach((chunkData, index) => {
-        const chunkDocRef = doc(chunksCollectionRef, String(index));
-        batch.set(chunkDocRef, {
+        const chunkDoc = doc(chunksRef, String(index));
+        batch.set(chunkDoc, {
             text: chunkData.text,
             embedding: chunkData.embedding,
         });
     });
-    
     await batch.commit();
 };
 
 export const finalizeKnowledgeDocumentMetadata = async (uid: string, docId: string, metadata: { name: string; size: number }) => {
-    const docRef = doc(getKnowledgeCollection(uid), docId);
+    if (!isConfigured) return;
+    const docRef = doc(getKnowledgeRef(uid), docId);
     await setDoc(docRef, {
         ...metadata,
         createdAt: serverTimestamp(),
@@ -238,29 +278,26 @@ export const finalizeKnowledgeDocumentMetadata = async (uid: string, docId: stri
 };
 
 export const deleteKnowledgeDocument = async (uid: string, document: KnowledgeDocument): Promise<void> => {
-    const knowledgeDocRef = doc(getKnowledgeCollection(uid), document.id);
-    const chunksCollectionRef = collection(knowledgeDocRef, 'chunks');
+    if (!isConfigured) return;
+    const docRef = doc(getKnowledgeRef(uid), document.id);
+    const chunksRef = collection(docRef, 'chunks');
+    const chunksSnapshot = await getDocs(chunksRef);
     
-    const querySnapshot = await getDocs(chunksCollectionRef);
-    const batch = writeBatch(getDb());
-    querySnapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-    });
+    const batch = writeBatch(getFirebaseDb());
+    chunksSnapshot.docs.forEach(c => batch.delete(c.ref));
+    batch.delete(docRef);
     await batch.commit();
-
-    await deleteDoc(knowledgeDocRef);
 };
 
 export const getKnowledgeVectorsForUser = async (uid: string): Promise<{ docId: string, chunkId: string, text: string, embedding: number[] }[]> => {
-    const knowledgeCol = getKnowledgeCollection(uid);
-    const docsSnapshot = await getDocs(knowledgeCol);
+    if (!isConfigured) return [];
+    const docsSnapshot = await getDocs(getKnowledgeRef(uid));
+    const allVectors: any[] = [];
     
-    const allVectors: { docId: string, chunkId: string, text: string, embedding: number[] }[] = [];
-    
-    for (const docSnap of docsSnapshot.docs) {
-        const chunksCollectionRef = collection(docSnap.ref, 'chunks');
-        const chunksSnapshot = await getDocs(chunksCollectionRef);
-        chunksSnapshot.forEach(chunkDoc => {
+    await Promise.all(docsSnapshot.docs.map(async (docSnap) => {
+        const chunksRef = collection(docSnap.ref, 'chunks');
+        const chunksSnapshot = await getDocs(chunksRef);
+        chunksSnapshot.docs.forEach(chunkDoc => {
             const data = chunkDoc.data();
             allVectors.push({
                 docId: docSnap.id,
@@ -269,16 +306,16 @@ export const getKnowledgeVectorsForUser = async (uid: string): Promise<{ docId: 
                 embedding: data.embedding
             });
         });
-    }
-    
+    }));
+
     return allVectors;
 };
 
 // --- Health Dashboard Management ---
 export const saveHealthRecord = async (uid: string, recordData: Omit<HealthRecord, 'id' | 'userId'>): Promise<string> => {
-    const healthRecordsRef = getHealthRecordsCollection(uid);
+    if (!isConfigured) throw new Error("Firebase not configured");
     const { createdAt, ...rest } = recordData;
-    const docRef = await addDoc(healthRecordsRef, {
+    const docRef = await addDoc(getHealthRecordsRef(uid), {
         ...rest,
         createdAt: serverTimestamp(),
     });
@@ -286,23 +323,184 @@ export const saveHealthRecord = async (uid: string, recordData: Omit<HealthRecor
 };
 
 export const getHealthRecords = async (uid: string): Promise<HealthRecord[]> => {
-    const healthRecordsRef = getHealthRecordsCollection(uid);
-    const q = query(healthRecordsRef, orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(docSnap => {
+    if (!isConfigured) return [];
+    const q = query(getHealthRecordsRef(uid), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docSnap => {
         const data = docSnap.data();
         return {
             id: docSnap.id,
             userId: uid,
             title: data.title,
             analysis: data.analysis,
-            createdAt: (data.createdAt as Timestamp).toMillis(),
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
         } as HealthRecord;
     });
 };
 
 export const deleteHealthRecord = async (uid: string, recordId: string): Promise<void> => {
-    const recordDocRef = doc(getHealthRecordsCollection(uid), recordId);
-    await deleteDoc(recordDocRef);
+    if (!isConfigured) return;
+    const docRef = doc(getHealthRecordsRef(uid), recordId);
+    await deleteDoc(docRef);
+};
+
+// --- Nutrition Tracking Management ---
+export const saveMealLog = async (uid: string, mealData: Omit<MealLog, 'id' | 'userId'>): Promise<string> => {
+    if (!isConfigured) throw new Error("Firebase not configured");
+    const { timestamp, ...rest } = mealData;
+    const docRef = await addDoc(getMealLogsRef(uid), {
+        ...rest,
+        timestamp: timestamp ? Timestamp.fromMillis(timestamp) : serverTimestamp(),
+    });
+    return docRef.id;
+};
+
+export const getMealLogs = async (uid: string, date?: Date): Promise<MealLog[]> => {
+    if (!isConfigured) return [];
+    let q;
+    const collectionRef = getMealLogsRef(uid);
+    
+    if (date) {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        q = query(collectionRef, 
+            where('timestamp', '>=', Timestamp.fromDate(startOfDay)),
+            where('timestamp', '<=', Timestamp.fromDate(endOfDay)),
+            orderBy('timestamp', 'desc')
+        );
+    } else {
+        q = query(collectionRef, orderBy('timestamp', 'desc'));
+    }
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docSnap => {
+        const data = docSnap.data() as any;
+        return {
+            id: docSnap.id,
+            userId: uid,
+            name: data.name,
+            calories: data.calories,
+            protein: data.protein,
+            carbs: data.carbs,
+            fat: data.fat,
+            imageUrl: data.imageUrl,
+            analysis: data.analysis,
+            timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : Date.now(),
+        } as MealLog;
+    });
+};
+
+export const deleteMealLog = async (uid: string, logId: string): Promise<void> => {
+    if (!isConfigured) return;
+    const docRef = doc(getMealLogsRef(uid), logId);
+    await deleteDoc(docRef);
+};
+
+// --- Wellness & Mood Management ---
+export const saveMoodLog = async (uid: string, moodData: Omit<MoodLog, 'id' | 'userId'>): Promise<string> => {
+    if (!isConfigured) throw new Error("Firebase not configured");
+    const { timestamp, ...rest } = moodData;
+    const docRef = await addDoc(getMoodLogsRef(uid), {
+        ...rest,
+        timestamp: timestamp ? Timestamp.fromMillis(timestamp) : serverTimestamp(),
+    });
+    return docRef.id;
+};
+
+export const getMoodLogs = async (uid: string): Promise<MoodLog[]> => {
+    if (!isConfigured) return [];
+    const q = query(getMoodLogsRef(uid), orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            userId: uid,
+            mood: data.mood,
+            note: data.note,
+            aiResponse: data.aiResponse,
+            timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : Date.now(),
+        } as MoodLog;
+    });
+};
+
+export const deleteMoodLog = async (uid: string, logId: string): Promise<void> => {
+    if (!isConfigured) return;
+    const docRef = doc(getMoodLogsRef(uid), logId);
+    await deleteDoc(docRef);
+};
+
+// --- Sleep Management ---
+export const saveSleepLog = async (uid: string, sleepData: Omit<SleepLog, 'id' | 'userId'>): Promise<string> => {
+    if (!isConfigured) throw new Error("Firebase not configured");
+    const { timestamp, ...rest } = sleepData;
+    const docRef = await addDoc(getSleepLogsRef(uid), {
+        ...rest,
+        timestamp: timestamp ? Timestamp.fromMillis(timestamp) : serverTimestamp(),
+    });
+    return docRef.id;
+};
+
+export const getSleepLogs = async (uid: string): Promise<SleepLog[]> => {
+    if (!isConfigured) return [];
+    const q = query(getSleepLogsRef(uid), orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            userId: uid,
+            bedtime: data.bedtime,
+            waketime: data.waketime,
+            durationHours: data.durationHours,
+            quality: data.quality,
+            notes: data.notes,
+            aiAnalysis: data.aiAnalysis,
+            timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : Date.now(),
+        } as SleepLog;
+    });
+};
+
+export const deleteSleepLog = async (uid: string, logId: string): Promise<void> => {
+    if (!isConfigured) return;
+    const docRef = doc(getSleepLogsRef(uid), logId);
+    await deleteDoc(docRef);
+};
+
+// --- Appointment Management ---
+export const saveAppointment = async (uid: string, appointmentData: Omit<AppointmentRecord, 'id' | 'userId'>): Promise<string> => {
+    if (!isConfigured) throw new Error("Firebase not configured");
+    const { timestamp, ...rest } = appointmentData;
+    const docRef = await addDoc(getAppointmentsRef(uid), {
+        ...rest,
+        timestamp: timestamp ? Timestamp.fromMillis(timestamp) : serverTimestamp(),
+    });
+    return docRef.id;
+};
+
+export const getAppointments = async (uid: string): Promise<AppointmentRecord[]> => {
+    if (!isConfigured) return [];
+    const q = query(getAppointmentsRef(uid), orderBy('date', 'asc')); 
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            userId: uid,
+            specialty: data.specialty,
+            date: data.date,
+            time: data.time,
+            confirmationId: data.confirmationId,
+            timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : Date.now(),
+        } as AppointmentRecord;
+    });
+};
+
+export const deleteAppointment = async (uid: string, aptId: string): Promise<void> => {
+    if (!isConfigured) return;
+    const docRef = doc(getAppointmentsRef(uid), aptId);
+    await deleteDoc(docRef);
 };

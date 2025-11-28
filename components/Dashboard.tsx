@@ -1,12 +1,17 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
-import { getHealthRecords, deleteHealthRecord } from '../services/healthDashboardService';
+import { getHealthRecords, deleteHealthRecord, getAIHealthSummary, getMealLogs, getMoodLogs, getAppointments, deleteAppointment } from '../services/healthDashboardService';
 import { getUserProfile, updateUserProfile } from '../services/firebase';
-import type { HealthRecord, AnalyzedMetric, UserProfile, MedicationSchedule } from '../types';
+import type { HealthRecord, AnalyzedMetric, UserProfile, MedicationSchedule, MealLog, MoodLog, AppointmentRecord } from '../types';
 import type { TFunction } from 'i18next';
 import { Line } from 'react-chartjs-2';
 import LoadingIndicator from './LoadingIndicator';
+import QueueStatus from './QueueStatus';
+import RewardsShop from './RewardsShop';
+import WearableStats from './WearableStats';
+import AIInsights from './AIInsights'; // Import the new component
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -18,7 +23,7 @@ import {
   Legend,
   ChartOptions,
 } from 'chart.js';
-import { format } from 'date-fns';
+import { format, isFuture } from 'date-fns';
 
 ChartJS.register(
   CategoryScale,
@@ -30,9 +35,49 @@ ChartJS.register(
   Legend
 );
 
-// This component is currently not used due to the shift to a proxy.
-// It remains for potential future local/client-side summary features.
-const AIHealthSummary: React.FC<{ records: HealthRecord[]; t: TFunction }> = ({ records, t }) => { return null };
+const AIHealthSummary: React.FC<{ records: HealthRecord[]; t: TFunction }> = ({ records, t }) => {
+    const [summary, setSummary] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleGenerateSummary = async () => {
+        setIsLoading(true);
+        setError('');
+        try {
+            const result = await getAIHealthSummary(records);
+            setSummary(result);
+        } catch (err) {
+            setError(t('dashboardAiSummaryError'));
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (records.length === 0) return null;
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-2">{t('dashboardAiSummaryTitle')}</h3>
+            {summary && !isLoading && <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{summary}</p>}
+            {isLoading && (
+                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <LoadingIndicator className="h-4 w-4 mr-2" />
+                    <span>{t('dashboardAiSummaryLoading')}</span>
+                </div>
+            )}
+            {error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
+            {!summary && !isLoading && (
+                <button
+                    onClick={handleGenerateSummary}
+                    className="px-3 py-1.5 text-sm font-semibold text-white bg-teal-600 rounded-md hover:bg-teal-700"
+                >
+                    {t('dashboardAiSummaryButton')}
+                </button>
+            )}
+        </div>
+    );
+};
 
 const StatusIndicator: React.FC<{ status: AnalyzedMetric['status']; t: TFunction }> = ({ status, t }) => {
     const statusMap = {
@@ -48,7 +93,7 @@ const StatusIndicator: React.FC<{ status: AnalyzedMetric['status']; t: TFunction
     );
 };
 
-const SummaryCards: React.FC<{ latestRecord: HealthRecord | undefined; t: TFunction }> = ({ latestRecord, t }) => {
+const SummaryCards: React.FC<{ latestRecord: HealthRecord | undefined; t: TFunction; healthPoints?: number; onOpenShop: () => void }> = ({ latestRecord, t, healthPoints, onOpenShop }) => {
     const keyMetrics = useMemo(() => {
         if (!latestRecord) return [];
         const KEY_METRIC_NAMES = ['Glucose', 'Cholesterol', 'Triglycerides', 'HDL', 'LDL', 'Hemoglobin'];
@@ -57,13 +102,30 @@ const SummaryCards: React.FC<{ latestRecord: HealthRecord | undefined; t: TFunct
         );
     }, [latestRecord]);
 
-    if (!latestRecord) return null;
-
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-            <h3 className="font-bold text-gray-800 dark:text-gray-100">{t('dashboardSummaryTitle')}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('dashboardSummarySubtitle', { date: new Date(latestRecord.createdAt).toLocaleDateString() })}</p>
-            {keyMetrics.length > 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 relative">
+            <div className="flex justify-between items-start mb-4">
+                <div>
+                    <h3 className="font-bold text-gray-800 dark:text-gray-100">{t('dashboardSummaryTitle')}</h3>
+                    {latestRecord && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboardSummarySubtitle', { date: new Date(latestRecord.createdAt).toLocaleDateString() })}</p>
+                    )}
+                </div>
+                {typeof healthPoints === 'number' && (
+                    <button 
+                        onClick={onOpenShop}
+                        className="flex items-center bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:hover:bg-yellow-900/50 px-3 py-1.5 rounded-full transition-colors cursor-pointer border border-yellow-200 dark:border-yellow-800"
+                        title="Click to visit Rewards Shop"
+                    >
+                        <span className="text-xl mr-1">🪙</span>
+                        <span className="font-bold text-yellow-700 dark:text-yellow-400">{healthPoints} {t('healthCoins')}</span>
+                    </button>
+                )}
+            </div>
+            
+            {!latestRecord ? (
+                 <p className="text-sm text-center text-gray-500 dark:text-gray-400 py-4">{t('dashboardNoVitals')}</p>
+            ) : keyMetrics.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {keyMetrics.map(metric => (
                         <div key={metric.metric} className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
@@ -308,14 +370,163 @@ const MedicationScheduleView: React.FC<{
     );
 };
 
+// New Components for Nutrition and Wellness Integration
+const NutritionSummaryCard: React.FC<{ meals: MealLog[]; t: TFunction }> = ({ meals, t }) => {
+    const totalCalories = meals.reduce((acc, meal) => acc + meal.calories, 0);
+    const count = meals.length;
+    
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+             <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-2">{t('dashboardNutritionSummary')}</h3>
+             <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">{totalCalories} <span className="text-sm text-gray-500 font-normal">kcal</span></p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{count} meals logged today</p>
+                </div>
+                 <div className="p-3 bg-teal-50 dark:bg-teal-900/20 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-teal-600 dark:text-teal-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                 </div>
+             </div>
+        </div>
+    );
+};
+
+const WellnessSummaryCard: React.FC<{ latestLog: MoodLog | undefined; t: TFunction }> = ({ latestLog, t }) => {
+    if (!latestLog) return null;
+    
+    const moodEmojis: Record<string, string> = {
+        'Great': '😄', 'Good': '🙂', 'Okay': '😐', 'Low': '😔', 'Stressed': '😫', 'Anxious': '😰',
+    };
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+             <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-2">{t('dashboardWellnessSummary')}</h3>
+             <div className="flex items-center">
+                 <span className="text-3xl mr-3">{moodEmojis[latestLog.mood]}</span>
+                 <div>
+                     <p className="font-medium text-gray-800 dark:text-gray-200">{t(`wellnessMood${latestLog.mood}`)}</p>
+                     <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(latestLog.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                 </div>
+             </div>
+        </div>
+    );
+};
+
+// --- NEW: Appointment and Timeline Components ---
+
+const AppointmentsCard: React.FC<{ 
+    appointments: AppointmentRecord[]; 
+    onDelete: (id: string) => void; 
+    t: TFunction 
+}> = ({ appointments, onDelete, t }) => {
+    const upcoming = appointments.filter(apt => {
+        const aptDate = new Date(`${apt.date}T${apt.time}`);
+        return isFuture(aptDate);
+    });
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 dark:text-gray-100">{t('dashboardAppointmentsTitle')}</h3>
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </div>
+            </div>
+            
+            {upcoming.length === 0 ? (
+                <p className="text-sm text-center text-gray-500 dark:text-gray-400 py-2">{t('dashboardNoAppointments')}</p>
+            ) : (
+                <div className="space-y-3">
+                    {upcoming.map(apt => (
+                        <div key={apt.id} className="p-3 border-l-4 border-blue-500 bg-gray-50 dark:bg-gray-700/50 rounded-r-md flex justify-between items-start">
+                            <div>
+                                <p className="font-semibold text-gray-800 dark:text-gray-200">{apt.specialty}</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {new Date(`${apt.date}T${apt.time}`).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">ID: {apt.confirmationId}</p>
+                            </div>
+                            <button onClick={() => onDelete(apt.id)} className="text-gray-400 hover:text-red-500 p-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+type TimelineItem = 
+    | { type: 'report', data: HealthRecord, date: number }
+    | { type: 'meal', data: MealLog, date: number }
+    | { type: 'mood', data: MoodLog, date: number }
+    | { type: 'appointment', data: AppointmentRecord, date: number };
+
+const HealthTimeline: React.FC<{ items: TimelineItem[]; t: TFunction }> = ({ items, t }) => {
+    if (items.length === 0) return null;
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4">{t('dashboardTimelineTitle')}</h3>
+            <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700 space-y-6">
+                {items.map((item, index) => {
+                    let icon, title, desc, colorClass;
+                    const dateStr = new Date(item.date).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+
+                    if (item.type === 'report') {
+                        icon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+                        title = item.data.title;
+                        desc = t('analyzerTitle');
+                        colorClass = 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400';
+                    } else if (item.type === 'meal') {
+                        icon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>;
+                        title = item.data.name;
+                        desc = `${item.data.calories} kcal`;
+                        colorClass = 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400';
+                    } else if (item.type === 'mood') {
+                        icon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+                        title = t(`wellnessMood${item.data.mood}`);
+                        desc = item.data.note || 'Check-in';
+                        colorClass = 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400';
+                    } else { // Appointment
+                        icon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+                        title = `${t('dashboardAppointmentsTitle')}: ${item.data.specialty}`;
+                        desc = new Date(`${item.data.date}T${item.data.time}`).toLocaleString();
+                        colorClass = 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400';
+                    }
+
+                    return (
+                        <div key={`${item.type}-${index}`} className="relative">
+                            <div className={`absolute -left-[25px] w-8 h-8 rounded-full flex items-center justify-center border-4 border-white dark:border-gray-900 ${colorClass}`}>
+                                {icon}
+                            </div>
+                            <div>
+                                <span className="text-xs text-gray-400 block mb-1">{dateStr}</span>
+                                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{title}</h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{desc}</p>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [records, setRecords] = useState<HealthRecord[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [todayMeals, setTodayMeals] = useState<MealLog[]>([]);
+  const [moodLogs, setMoodLogs] = useState<MoodLog[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isShopOpen, setIsShopOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -327,12 +538,18 @@ const Dashboard: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [userRecords, userProfile] = await Promise.all([
+      const [userRecords, userProfile, meals, moods, apts] = await Promise.all([
           getHealthRecords(user.uid),
-          getUserProfile(user.uid)
+          getUserProfile(user.uid),
+          getMealLogs(user.uid, new Date()), // Get today's meals
+          getMoodLogs(user.uid), // Get mood history
+          getAppointments(user.uid)
       ]);
       setRecords(userRecords);
       setProfile(userProfile);
+      setTodayMeals(meals);
+      setMoodLogs(moods);
+      setAppointments(apts);
     } catch (err) {
       console.error(err);
       setError(t('dashboardError'));
@@ -367,6 +584,70 @@ const Dashboard: React.FC = () => {
           setError("Failed to delete schedule.");
       }
   };
+  
+  const handleDeleteAppointment = async (id: string) => {
+      if (!user || !window.confirm(t('dashboardDeleteConfirm'))) return;
+      try {
+          await deleteAppointment(user.uid, id);
+          setAppointments(prev => prev.filter(a => a.id !== id));
+      } catch (err) {
+          console.error("Failed to delete appointment:", err);
+      }
+  };
+  
+  const handleExportDoctor = () => {
+      if (!profile && records.length === 0) return;
+      setIsExporting(true);
+      
+      const latestRecord = records[0];
+      const meds = profile?.medications?.join(', ') || 'None';
+      const allergies = profile?.allergies?.join(', ') || 'None';
+      const conditions = profile?.medicalConditions?.join(', ') || 'None';
+      
+      let summary = `PATIENT HEALTH SUMMARY\nGenerated by Public Health AI Assistant\nDate: ${new Date().toLocaleDateString()}\n\n`;
+      
+      summary += `[PROFILE]\nName: ${profile?.name || 'N/A'}\nConditions: ${conditions}\nAllergies: ${allergies}\nCurrent Medications: ${meds}\n\n`;
+      
+      if (latestRecord) {
+          summary += `[LATEST LAB REPORT - ${new Date(latestRecord.createdAt).toLocaleDateString()}]\n`;
+          latestRecord.analysis.keyFindings.forEach(f => {
+             summary += `- ${f.metric}: ${f.value} ${f.unit} (${f.status})\n`; 
+          });
+          summary += '\n';
+      }
+      
+      if (todayMeals.length > 0) {
+          const cals = todayMeals.reduce((a, b) => a + b.calories, 0);
+          summary += `[NUTRITION TODAY]\nTotal Calories: ${cals}\nMeals: ${todayMeals.map(m => m.name).join(', ')}\n\n`;
+      }
+      
+      if (moodLogs.length > 0) {
+           summary += `[LATEST MOOD]\n${new Date(moodLogs[0].timestamp).toLocaleString()}: ${moodLogs[0].mood} - "${moodLogs[0].note || ''}"\n`;
+      }
+      
+      navigator.clipboard.writeText(summary);
+      alert(t('dashboardExportDoctorSuccess'));
+      setIsExporting(false);
+  };
+
+  const handleRedeemSuccess = async () => {
+      // Refresh profile to update points
+      if (user) {
+          const updatedProfile = await getUserProfile(user.uid);
+          setProfile(updatedProfile);
+      }
+  };
+
+  // Process items for Timeline
+  const timelineItems = useMemo(() => {
+      const items: TimelineItem[] = [];
+      records.forEach(r => items.push({ type: 'report', data: r, date: r.createdAt }));
+      todayMeals.forEach(m => items.push({ type: 'meal', data: m, date: m.timestamp }));
+      moodLogs.forEach(m => items.push({ type: 'mood', data: m, date: m.timestamp }));
+      appointments.forEach(a => items.push({ type: 'appointment', data: a, date: a.timestamp })); // Use creation time for timeline flow
+      
+      return items.sort((a, b) => b.date - a.date).slice(0, 10); // Show latest 10
+  }, [records, todayMeals, moodLogs, appointments]);
 
   const renderContent = () => {
       if (isLoading) {
@@ -378,7 +659,7 @@ const Dashboard: React.FC = () => {
       if (!user) {
           return <div className="text-center text-gray-500 dark:text-gray-400">{t('dashboardSaveDisabledTooltip')}</div>
       }
-      if (records.length === 0 && (!profile?.medicationSchedules || profile.medicationSchedules.length === 0)) {
+      if (records.length === 0 && (!profile?.medicationSchedules || profile.medicationSchedules.length === 0) && todayMeals.length === 0 && moodLogs.length === 0 && appointments.length === 0) {
           return (
               <div className="text-center py-10 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                   <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -389,19 +670,66 @@ const Dashboard: React.FC = () => {
       }
       return (
           <div className="space-y-6">
-              {profile?.medicationSchedules && <MedicationScheduleView schedules={profile.medicationSchedules} onDelete={handleDeleteSchedule} t={t} />}
-              <SummaryCards latestRecord={records[0]} t={t} />
-              <HealthTrendChart records={records} t={t} />
+              {/* Action Bar */}
+              <div className="flex justify-end">
+                  <button 
+                    onClick={handleExportDoctor}
+                    disabled={isExporting}
+                    className="flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                      {t('dashboardExportDoctor')}
+                  </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column: Summaries and Timeline */}
+                  <div className="lg:col-span-2 space-y-6">
+                      <AIInsights /> {/* Inserted Insight Engine */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <SummaryCards latestRecord={records[0]} t={t} healthPoints={profile?.healthPoints} onOpenShop={() => setIsShopOpen(true)} />
+                          <WearableStats />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <QueueStatus />
+                          <NutritionSummaryCard meals={todayMeals} t={t} />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <WellnessSummaryCard latestLog={moodLogs[0]} t={t} />
+                      </div>
+                      <AIHealthSummary records={records} t={t} />
+                      <HealthTrendChart records={records} t={t} />
+                  </div>
+
+                  {/* Right Column: Appointments and Schedules */}
+                  <div className="space-y-6">
+                      <AppointmentsCard appointments={appointments} onDelete={handleDeleteAppointment} t={t} />
+                      {profile?.medicationSchedules && profile.medicationSchedules.length > 0 && <MedicationScheduleView schedules={profile.medicationSchedules} onDelete={handleDeleteSchedule} t={t} />}
+                      <HealthTimeline items={timelineItems} t={t} />
+                  </div>
+              </div>
+
+              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-8 mb-4">Detailed History</h3>
               {records.map(record => (
                   <HealthRecordCard key={record.id} record={record} onDelete={handleDeleteRecord} t={t} />
               ))}
+
+              {/* Rewards Shop Modal */}
+              {isShopOpen && user && (
+                  <RewardsShop 
+                      userHealthPoints={profile?.healthPoints || 0}
+                      userId={user.uid}
+                      onClose={() => setIsShopOpen(false)}
+                      onRedeemSuccess={handleRedeemSuccess}
+                  />
+              )}
           </div>
       );
   }
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900">
-      <div className="w-full max-w-4xl mx-auto">
+      <div className="w-full max-w-6xl mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{t('dashboardTitle')}</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">{t('dashboardSubtitle')}</p>

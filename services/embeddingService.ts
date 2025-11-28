@@ -12,7 +12,9 @@ export const createEmbedding = async (text: string): Promise<number[]> => {
             model: embeddingModel,
             contents: { parts: [{ text }] },
         });
-        return response.embedding.values;
+        // @google/genai-fix: Per the error "Property 'embedding' does not exist... Did you mean 'embeddings'?", changed to use `embeddings`.
+        // Assuming it's an array and taking the first element.
+        return (response as any).embeddings[0].values;
     } catch (error) {
         console.error("Error creating embedding:", error);
         throw new Error("Failed to create text embedding.");

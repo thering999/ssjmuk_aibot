@@ -1,17 +1,21 @@
+
 import { Content, Part, GenerateContentResponse, Type, FunctionDeclaration } from "@google/genai";
 import type { TFunction } from 'i18next';
-import type { AttachedFile, ModelType, Geolocation, ChatMessageSource, ChatMessage, UserProfile } from '../types';
+import type { AttachedFile, ModelType, Geolocation, ChatMessageSource, ChatMessage, UserProfile, Appointment } from '../types';
 import { clinicFinderTool } from '../tools/clinicFinder';
 import { symptomCheckerTool } from '../tools/symptomCheckerTool';
 import { medicationReminderTool } from '../tools/medicationReminderTool';
 import { medicationSchedulerTool } from '../tools/medicationSchedulerTool';
+import { appointmentBookingTool } from '../tools/appointmentBookingTool';
 import { outputGenerationTools } from '../tools/outputGenerationTools';
 import { userProfileTool } from '../tools/healthProfileTool';
 import { browserTools } from '../tools/browserTools';
 import { getClinicInfo } from './clinicService';
 import { getSymptomAdvice } from './symptomService';
 import { setReminder } from './reminderService';
+import { bookAppointment } from './appointmentService';
 import { ai } from './geminiService';
+import { User } from './firebase';
 
 /**
  * Safely extracts and concatenates text from a Gemini API response object,
@@ -36,7 +40,7 @@ function extractText(response: GenerateContentResponse): string {
 const modelMap: Record<ModelType, string> = {
     'flash-lite': 'gemini-flash-lite-latest',
     'flash': 'gemini-2.5-flash',
-    'pro': 'gemini-2.5-pro',
+    'pro': 'gemini-3-pro-preview', // Upgraded to Gemini 3 Pro
 };
 
 interface GroundingChunk {
@@ -72,9 +76,12 @@ export type GenerateTextOptions = {
     useMedicationReminder: boolean;
     useMedicationScheduler: boolean;
     useUserProfile: boolean;
+    useAppointmentBooking: boolean;
+    useIsanDialect: boolean;
     systemInstructionText: string;
     knowledgeContext: string | null;
     userProfile: UserProfile | null;
+    user?: User | null; // Add user object to options
     abortSignal: AbortSignal;
 }
 
@@ -82,7 +89,7 @@ export async function* generateText(options: GenerateTextOptions): AsyncGenerato
     const {
         prompt, files, history, model, useSearch, useMaps, location,
         useClinicFinder, useSymptomChecker, useMedicationReminder, useMedicationScheduler,
-        useUserProfile, systemInstructionText, knowledgeContext, userProfile, abortSignal
+        useUserProfile, useAppointmentBooking, useIsanDialect, systemInstructionText, knowledgeContext, userProfile, user, abortSignal
     } = options;
 
     const geminiModel = modelMap[model];
@@ -95,6 +102,7 @@ export async function* generateText(options: GenerateTextOptions): AsyncGenerato
     if (useSymptomChecker) functionDeclarations.push(symptomCheckerTool);
     if (useMedicationReminder) functionDeclarations.push(medicationReminderTool);
     if (useMedicationScheduler) functionDeclarations.push(medicationSchedulerTool);
+    if (useAppointmentBooking) functionDeclarations.push(appointmentBookingTool);
     if (useUserProfile) functionDeclarations.push(userProfileTool);
     functionDeclarations.push(...outputGenerationTools);
     functionDeclarations.push(...browserTools);
@@ -121,6 +129,10 @@ export async function* generateText(options: GenerateTextOptions): AsyncGenerato
     
     let instructionWithKnowledge = `You are a personalized AI assistant. When the user shares personal details (like their name, work, interests, preferences, or health information), use the 'rememberUserDetails' tool to save them. Proactively use the information you have saved about the user to tailor your responses. ${systemInstructionText || ''}`;
     
+    if (useIsanDialect) {
+        instructionWithKnowledge += "\nIMPORTANT: You must speak in the Northeastern Thai dialect (Isan language). Use words like 'เจ้า', 'เด้อ', 'บ่', 'แม่น', 'เฮา' appropriately to sound friendly, warm, and local to Mukdahan province.";
+    }
+
     if (knowledgeContext) {
         instructionWithKnowledge = `Please prioritize the following information to answer the user's question. This is official, curated data that should be considered the primary source of truth.\n\n[Official Data]\n${knowledgeContext}\n---\n\nOriginal instructions: ${instructionWithKnowledge}`;
     }
@@ -133,6 +145,7 @@ export async function* generateText(options: GenerateTextOptions): AsyncGenerato
     
     const config: any = {};
     if (instructionWithKnowledge) config.systemInstruction = instructionWithKnowledge;
+    // Enable thinking for Pro model (Gemini 3 Pro)
     if (model === 'pro') config.thinkingConfig = { thinkingBudget: 16384 };
     if (tools.length > 0) config.tools = tools;
     
@@ -202,6 +215,12 @@ export async function* generateText(options: GenerateTextOptions): AsyncGenerato
                     yield { toolUse: { name: 'scheduleMedication', args: call.args, isCalling: true }};
                     const result = { success: true, message: "The medication schedule has been saved to the user's profile." };
                     yield { toolUse: { name: 'scheduleMedication', args: call.args, result: JSON.stringify(result), isCalling: false }};
+                    toolParts.push({ functionResponse: { name: call.name, response: { result } } });
+                } else if (call.name === 'bookAppointment') {
+                    yield { toolUse: { name: 'bookAppointment', args: call.args, isCalling: true }};
+                    // Pass user ID to save appointment
+                    const result = await bookAppointment(call.args.specialty, call.args.date, call.args.time, user?.uid);
+                    yield { toolUse: { name: 'bookAppointment', args: call.args, result: result.message, isCalling: false }};
                     toolParts.push({ functionResponse: { name: call.name, response: { result } } });
                 }
             }

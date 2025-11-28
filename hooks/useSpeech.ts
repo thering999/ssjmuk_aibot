@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export const useSpeech = (language: 'en' | 'th') => {
+export const useSpeech = (language: 'en' | 'th' | 'lo') => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -39,7 +39,7 @@ export const useSpeech = (language: 'en' | 'th') => {
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = language === 'th' ? 'th-TH' : 'en-US';
+    recognition.lang = language === 'th' ? 'th-TH' : (language === 'lo' ? 'lo-LA' : 'en-US');
 
     recognition.onresult = (event) => {
       let finalTranscript = '';

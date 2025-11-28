@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, memo } from 'react';
 import type { ModelType } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
@@ -21,11 +22,15 @@ interface ModelSelectorProps {
   setUseMedicationScheduler: (enabled: boolean) => void;
   useUserProfile: boolean;
   setUseUserProfile: (enabled: boolean) => void;
+  useAppointmentBooking: boolean;
+  setUseAppointmentBooking: (enabled: boolean) => void;
+  useIsanDialect: boolean;
+  setUseIsanDialect: (enabled: boolean) => void;
   locationError: string | null;
 }
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({
-  model, setModel, useSearch, setUseSearch, useMaps, setUseMaps, useClinicFinder, setUseClinicFinder, useKnowledgeBase, setUseKnowledgeBase, useSymptomChecker, setUseSymptomChecker, useMedicationReminder, setUseMedicationReminder, useMedicationScheduler, setUseMedicationScheduler, useUserProfile, setUseUserProfile, locationError
+  model, setModel, useSearch, setUseSearch, useMaps, setUseMaps, useClinicFinder, setUseClinicFinder, useKnowledgeBase, setUseKnowledgeBase, useSymptomChecker, setUseSymptomChecker, useMedicationReminder, setUseMedicationReminder, useMedicationScheduler, setUseMedicationScheduler, useUserProfile, setUseUserProfile, useAppointmentBooking, setUseAppointmentBooking, useIsanDialect, setUseIsanDialect, locationError
 }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -68,8 +73,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-20 border border-gray-200 dark:border-gray-700">
-          <div className="p-4">
+        <div className="absolute right-0 mt-2 w-72 max-w-[90vw] bg-white dark:bg-gray-800 rounded-lg shadow-xl z-20 border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="p-4 max-h-[80vh] overflow-y-auto no-scrollbar">
             <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm mb-2">{t('model')}</h3>
             <div className="space-y-1">
               {(Object.keys(modelConfig) as ModelType[]).map(key => (
@@ -86,6 +91,13 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
             <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
                 <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm mb-2">{t('tools')}</h3>
                 <div className="space-y-2">
+                    <label
+                       className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                       title={t('tooltipIsanDialect')}
+                     >
+                        <input type="checkbox" checked={useIsanDialect} onChange={(e) => setUseIsanDialect(e.target.checked)} className="accent-teal-600" />
+                        <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{t('useIsanDialect')}</span>
+                    </label>
                     <label
                        className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                        title={t('tooltipKnowledgeBase')}
@@ -113,6 +125,13 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                      >
                         <input type="checkbox" checked={useMedicationScheduler} onChange={(e) => setUseMedicationScheduler(e.target.checked)} className="accent-teal-600" />
                         <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{t('useMedicationScheduler')}</span>
+                    </label>
+                     <label
+                       className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                       title={t('tooltipAppointmentBooking')}
+                     >
+                        <input type="checkbox" checked={useAppointmentBooking} onChange={(e) => setUseAppointmentBooking(e.target.checked)} className="accent-teal-600" />
+                        <span className="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{t('useAppointmentBooking')}</span>
                     </label>
                     <label
                        className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"

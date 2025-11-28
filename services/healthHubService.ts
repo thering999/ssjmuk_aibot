@@ -31,7 +31,7 @@ For each finding, create a concise summary in simple language.
 Your response MUST be a single JSON object wrapped in a markdown code block (e.g. \`\`\`json ... \`\`\`). The JSON object must have a single key "articles" which is an array of objects. Each object must have the following keys: "category" (one of: 'Alert', 'Campaign', 'News', 'Tip'), "title", "summary", and "source" (the original URL).`;
         
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-pro",
+            model: "gemini-3-pro-preview", // Upgrade to Gemini 3 Pro
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],

@@ -1,3 +1,4 @@
+
 import { Type, GenerateContentResponse } from "@google/genai";
 import { ai } from "./geminiService";
 import type { AttachedFile, HealthReportAnalysis } from '../types';
@@ -24,48 +25,55 @@ function extractText(response: GenerateContentResponse): string {
 const responseSchema = {
     type: Type.OBJECT,
     properties: {
-        summary: { type: Type.STRING, description: "A brief, one or two-sentence overall summary of the lab results. Mention if results are generally normal or if there are notable findings." },
+        reportType: { type: Type.STRING, description: "The specific medical type of the report (e.g., 'Complete Blood Count (CBC)', 'Lipid Profile', 'Liver Function Test', 'Urinalysis'). If it is not a recognizable medical report, return 'Unknown Document'." },
+        summary: { type: Type.STRING, description: "A brief, one or two-sentence overall summary of the results. Mention if results are generally normal or if there are specific areas of concern." },
         keyFindings: {
-            type: Type.ARRAY, description: "An array of only the metrics that are outside the normal range (High or Low). If all are normal, this array should be empty.",
+            type: Type.ARRAY, description: "An array of ONLY the metrics that are outside the normal range (High, Low, or Abnormal). If all metrics are normal, this array should be empty.",
             items: {
                 type: Type.OBJECT,
                 properties: {
                     metric: { type: Type.STRING, description: "The name of the test/metric (e.g., 'Hemoglobin', 'Glucose')." },
-                    value: { type: Type.STRING, description: "The patient's result value (e.g., '14.5', '98')." },
-                    unit: { type: Type.STRING, description: "The unit of measurement (e.g., 'g/dL', 'mg/dL')." },
-                    range: { type: Type.STRING, description: "The normal reference range (e.g., '13.5-17.5')." },
-                    status: { type: Type.STRING, description: "The status of the result, must be one of: 'High', 'Low'." },
-                    explanation: { type: Type.STRING, description: "A simple, one-sentence explanation of what this metric measures and why a high/low value is significant." }
+                    value: { type: Type.STRING, description: "The patient's result value." },
+                    unit: { type: Type.STRING, description: "The unit of measurement." },
+                    range: { type: Type.STRING, description: "The reference range." },
+                    status: { type: Type.STRING, description: "The status: 'High', 'Low', or 'Abnormal'." },
+                    explanation: { type: Type.STRING, description: "A simple, one-sentence explanation of why this specific result might be high or low and what it could indicate." }
                 }
             }
         },
         detailedResults: {
-            type: Type.ARRAY, description: "A comprehensive array of all metrics identified in the report, including those within the normal range.",
+            type: Type.ARRAY, description: "A comprehensive array of all metrics identified in the report, including normal ones.",
             items: {
                 type: Type.OBJECT,
                 properties: {
                     metric: { type: Type.STRING, description: "The name of the test/metric." },
                     value: { type: Type.STRING, description: "The patient's result value." },
                     unit: { type: Type.STRING, description: "The unit of measurement." },
-                    range: { type: Type.STRING, description: "The normal reference range. If not available, use 'N/A'." },
-                    status: { type: Type.STRING, description: "The status of the result, must be one of: 'Normal', 'High', 'Low', 'Abnormal', 'Unavailable'." },
-                    explanation: { type: Type.STRING, description: "A simple, one or two-sentence explanation in layman's terms of what this metric is for." }
+                    range: { type: Type.STRING, description: "The reference range. Use 'N/A' if not visible." },
+                    status: { type: Type.STRING, description: "The status: 'Normal', 'High', 'Low', 'Abnormal', 'Unavailable'." },
+                    explanation: { type: Type.STRING, description: "A simple explanation of what this test measures." }
                 }
             }
+        },
+        lifestyleTips: {
+            type: Type.ARRAY,
+            description: "A list of 3-5 actionable lifestyle, diet, or habit tips based specifically on the abnormal results found. If all results are normal, provide general wellness advice. Do not prescribe medication.",
+            items: { type: Type.STRING }
         }
-    }
+    },
+    required: ["reportType", "summary", "keyFindings", "detailedResults", "lifestyleTips"]
 };
 
 export const analyzeHealthReport = async (file: AttachedFile): Promise<HealthReportAnalysis> => {
+    if (!file.base64) {
+        throw new Error("File content is missing.");
+    }
+
     try {
-        const systemInstruction = `You are a helpful AI assistant designed to analyze medical lab reports. Your task is to extract information from an image of a report, structure it into a specific JSON format, and explain medical terms in simple, easy-to-understand language.
-
-IMPORTANT: You are not a medical professional. Do NOT provide any diagnosis, medical advice, or treatment recommendations. Your response must be purely informational. Always begin your summary with a disclaimer stating this fact. Adhere strictly to the provided JSON schema.`;
+        const prompt = "Analyze this image of a medical laboratory report. Identify the type of report. Extract all data accurately. For any abnormal results, provide specific explanations and actionable lifestyle tips. Translate complex medical terms into simple, easy-to-understand language.";
         
-        const prompt = "Please analyze the provided image of a lab report and return the data in the specified JSON format.";
-
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-pro",
+            model: "gemini-3-pro-preview", // Upgrade to Gemini 3 Pro for medical accuracy
             contents: {
                 parts: [
                     { inlineData: { data: file.base64, mimeType: file.mimeType } },
@@ -73,43 +81,19 @@ IMPORTANT: You are not a medical professional. Do NOT provide any diagnosis, med
                 ]
             },
             config: {
-                systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema: responseSchema,
-                temperature: 0.2,
-                thinkingConfig: { thinkingBudget: 24576 }
+                temperature: 0.1, // Low temperature for accuracy
+                thinkingConfig: { thinkingBudget: 8192 } // Enable reasoning for better data extraction
             }
         });
 
-        let jsonText = extractText(response).trim();
-        
-        const jsonMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch && jsonMatch[1]) {
-            jsonText = jsonMatch[1];
-        }
-
-        if (!jsonText) throw new Error("AI returned an empty analysis.");
-
-        const parsedResult = JSON.parse(jsonText);
-        
-        const result: HealthReportAnalysis = {
-            summary: parsedResult.summary || "No summary provided.",
-            keyFindings: Array.isArray(parsedResult.keyFindings) ? parsedResult.keyFindings : [],
-            detailedResults: Array.isArray(parsedResult.detailedResults) ? parsedResult.detailedResults : [],
-        };
-        
-        const disclaimer = "Disclaimer: This is an AI-generated summary for informational purposes only and is not medical advice. Please consult a healthcare professional.";
-        if (!result.summary.toLowerCase().includes("disclaimer")) {
-            result.summary = `${disclaimer} ${result.summary}`;
-        }
-        
-        return result;
+        const text = extractText(response).trim();
+        const analysis: HealthReportAnalysis = JSON.parse(text);
+        return analysis;
 
     } catch (error) {
         console.error("Error analyzing health report:", error);
-        if (error instanceof SyntaxError) {
-             throw new Error("Failed to analyze the health report. The AI returned invalid JSON.");
-        }
-        throw new Error("Failed to analyze the health report. The AI model could not process the request.");
+        throw new Error("Failed to analyze the health report. Please ensure the image is clear and legible.");
     }
 };

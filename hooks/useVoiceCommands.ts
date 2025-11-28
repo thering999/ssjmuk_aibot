@@ -26,7 +26,7 @@ type VoiceCommandActions = Record<string, () => void>;
 
 export const useVoiceCommands = (
   actions: VoiceCommandActions,
-  language: 'en' | 'th',
+  language: 'en' | 'th' | 'lo',
   t: TFunction,
   onShowToast: (message: string) => void
 ) => {
@@ -74,7 +74,7 @@ export const useVoiceCommands = (
 
     recognition.continuous = true;
     recognition.interimResults = false; // We only want the final transcript
-    recognition.lang = language === 'th' ? 'th-TH' : 'en-US';
+    recognition.lang = language === 'th' ? 'th-TH' : (language === 'lo' ? 'lo-LA' : 'en-US');
 
     recognition.onresult = async (event) => {
       if (isProcessingCommand.current) return;

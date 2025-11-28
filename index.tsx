@@ -1,5 +1,10 @@
+
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
+// IMPORTANT: Side-effect imports must come first to ensure components are registered
+import 'firebase/auth';
+import 'firebase/firestore';
+
 import App from './App';
 import { LanguageProvider } from './hooks/useTranslation';
 import { AuthProvider } from './hooks/useAuth';
